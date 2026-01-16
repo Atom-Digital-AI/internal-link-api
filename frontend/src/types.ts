@@ -148,3 +148,30 @@ export interface ContextualEditorProps {
   targetPages: PageInfo[];
   onBack: () => void;
 }
+
+// Saved session types for persistence
+export interface SavedSession {
+  id: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+  domain: string;
+  sourcePattern: string;
+  targetPattern: string;
+  sourcePages: PageInfo[];
+  targetPages: PageInfo[];
+  results: PageResult[];
+  summary: {
+    total_scanned: number;
+    needs_links: number;
+    has_good_density: number;
+    failed: number;
+  };
+}
+
+export interface SavedSessionsListProps {
+  sessions: SavedSession[];
+  onLoad: (session: SavedSession) => void;
+  onDelete: (id: string) => void;
+  onClose: () => void;
+}

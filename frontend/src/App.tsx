@@ -4,9 +4,12 @@ import type {
   PageResult,
   AnalyzeResponse,
   ConfigResponse,
+  SavedSession,
 } from './types';
 import { getConfig, getSitemap, bulkAnalyze, analyzePage } from './services/api';
+import { getSavedSessions, saveSession, deleteSession, createSession } from './services/storage';
 import { ContextualEditor } from './components/detail';
+import { SavedSessions } from './components/SavedSessions';
 import './App.css';
 
 type Step = 'setup' | 'select' | 'results' | 'detail';
@@ -39,8 +42,14 @@ function App() {
   // Detail view
   const [detailData, setDetailData] = useState<AnalyzeResponse | null>(null);
 
+  // Saved sessions
+  const [savedSessions, setSavedSessions] = useState<SavedSession[]>([]);
+  const [showSavedSessions, setShowSavedSessions] = useState(false);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+
   useEffect(() => {
     getConfig().then(setConfig).catch(console.error);
+    setSavedSessions(getSavedSessions());
   }, []);
 
   const handleFetchSitemap = async (e: React.FormEvent) => {
@@ -120,11 +129,89 @@ function App() {
     setSelectedUrls(new Set());
   };
 
+  const handleSaveSession = () => {
+    if (!summary) return;
+
+    const session = currentSessionId
+      ? {
+          id: currentSessionId,
+          name: savedSessions.find(s => s.id === currentSessionId)?.name || `${new URL(domain).hostname} - ${new Date().toLocaleDateString()}`,
+          createdAt: savedSessions.find(s => s.id === currentSessionId)?.createdAt || new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          domain,
+          sourcePattern,
+          targetPattern,
+          sourcePages,
+          targetPages,
+          results,
+          summary,
+        }
+      : createSession(domain, sourcePattern, targetPattern, sourcePages, targetPages, results, summary);
+
+    saveSession(session);
+    setCurrentSessionId(session.id);
+    setSavedSessions(getSavedSessions());
+  };
+
+  const handleLoadSession = (session: SavedSession) => {
+    setDomain(session.domain);
+    setSourcePattern(session.sourcePattern);
+    setTargetPattern(session.targetPattern);
+    setSourcePages(session.sourcePages);
+    setTargetPages(session.targetPages);
+    setResults(session.results);
+    setSummary(session.summary);
+    setCurrentSessionId(session.id);
+    setShowSavedSessions(false);
+    setStep('results');
+  };
+
+  const handleDeleteSession = (id: string) => {
+    deleteSession(id);
+    setSavedSessions(getSavedSessions());
+    if (currentSessionId === id) {
+      setCurrentSessionId(null);
+    }
+  };
+
+  const handleRefreshResults = async () => {
+    if (selectedUrls.size === 0 && results.length === 0) return;
+
+    setError(null);
+    setLoading(true);
+
+    try {
+      const urlsToAnalyze = selectedUrls.size > 0
+        ? Array.from(selectedUrls)
+        : results.map(r => r.url);
+
+      const data = await bulkAnalyze(urlsToAnalyze, targetPattern, 500);
+      setResults(data.results);
+      setSummary(data.summary);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to refresh results');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="app">
       <header>
-        <h1>Internal Link Finder</h1>
-        <p>Find pages that need internal links and get AI-powered suggestions</p>
+        <div className="header-content">
+          <div>
+            <h1>Internal Link Finder</h1>
+            <p>Find pages that need internal links and get AI-powered suggestions</p>
+          </div>
+          {savedSessions.length > 0 && (
+            <button
+              onClick={() => setShowSavedSessions(true)}
+              className="saved-sessions-btn"
+            >
+              Saved Sessions ({savedSessions.length})
+            </button>
+          )}
+        </div>
       </header>
 
       {error && (
@@ -227,7 +314,26 @@ function App() {
       {step === 'results' && (
         <section className="results">
           <div className="results-header">
-            <h2>Analysis Results</h2>
+            <div className="results-title-row">
+              <h2>Analysis Results</h2>
+              <div className="results-actions-top">
+                <button
+                  onClick={handleRefreshResults}
+                  disabled={loading}
+                  className="refresh-btn"
+                  title="Re-analyze all pages with fresh data"
+                >
+                  {loading ? 'Refreshing...' : '↻ Refresh'}
+                </button>
+                <button
+                  onClick={handleSaveSession}
+                  className="save-btn"
+                  title={currentSessionId ? 'Update saved session' : 'Save session for later'}
+                >
+                  {currentSessionId ? '✓ Update Saved' : '💾 Save'}
+                </button>
+              </div>
+            </div>
             {summary && (
               <div className="summary">
                 <div className="stat">
@@ -312,6 +418,15 @@ function App() {
           <div className="spinner"></div>
           <p>Analyzing pages... This may take a while.</p>
         </div>
+      )}
+
+      {showSavedSessions && (
+        <SavedSessions
+          sessions={savedSessions}
+          onLoad={handleLoadSession}
+          onDelete={handleDeleteSession}
+          onClose={() => setShowSavedSessions(false)}
+        />
       )}
     </div>
   );
