@@ -64,7 +64,7 @@ IMPORTANT: Respond ONLY with valid JSON in this exact format, no other text:
         ],
         generationConfig: {
           temperature: 0.7,
-          maxOutputTokens: 2048,
+          maxOutputTokens: 4096,
         },
       }),
     }
@@ -133,7 +133,24 @@ IMPORTANT: Respond ONLY with valid JSON in this exact format, no other text:
         return parsed;
       }
     } catch {
-      // All strategies failed
+      // Continue to next strategy
+    }
+
+    // Strategy 5: Salvage individual complete suggestions from truncated response
+    // This handles cases where the API response was cut off mid-JSON
+    const individualMatches = rawText.matchAll(
+      /\{\s*"sentence"\s*:\s*"(?:[^"\\]|\\.)*"\s*,\s*"targetUrl"\s*:\s*"(?:[^"\\]|\\.)*"\s*,\s*"anchorText"\s*:\s*"(?:[^"\\]|\\.)*"\s*,\s*"reason"\s*:\s*"(?:[^"\\]|\\.)*"\s*\}/g
+    );
+    const salvaged = [...individualMatches].map(m => {
+      try {
+        return JSON.parse(m[0]);
+      } catch {
+        return null;
+      }
+    }).filter(Boolean);
+    if (salvaged.length > 0) {
+      console.warn(`Salvaged ${salvaged.length} suggestions from partial response`);
+      return salvaged as LinkSuggestion[];
     }
 
     throw new Error('Could not extract valid JSON from response');
@@ -152,6 +169,15 @@ IMPORTANT: Respond ONLY with valid JSON in this exact format, no other text:
   } catch (error) {
     console.error('Failed to parse Gemini response:', text);
     console.error('Parse error:', error);
+
+    // Detect truncation - response ends without proper JSON closure
+    const trimmed = text.trim();
+    const isTruncated = !trimmed.endsWith('}') && !trimmed.endsWith(']') &&
+      (trimmed.includes('"suggestions"') || trimmed.includes('"sentence"'));
+
+    if (isTruncated) {
+      throw new Error('AI response was truncated. Try again or reduce the content length.');
+    }
     throw new Error('Failed to parse AI suggestions. Please try again.');
   }
 }
