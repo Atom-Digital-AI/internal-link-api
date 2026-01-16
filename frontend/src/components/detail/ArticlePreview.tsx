@@ -11,6 +11,7 @@ interface ArticlePreviewProps {
   onHighlightClick: (id: string) => void;
   onHighlightHover: (id: string | null) => void;
   scrollToHighlightId: string | null;
+  onExistingLinksLegendClick?: () => void;
 }
 
 /**
@@ -24,7 +25,8 @@ export function ArticlePreview({
   totalExistingLinks,
   onHighlightClick,
   onHighlightHover,
-  scrollToHighlightId
+  scrollToHighlightId,
+  onExistingLinksLegendClick
 }: ArticlePreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -59,7 +61,13 @@ export function ArticlePreview({
     <div className="article-preview" ref={containerRef}>
       {/* Legend */}
       <div className="article-preview__legend">
-        <span className="article-preview__legend-item">
+        <span
+          className={`article-preview__legend-item ${onExistingLinksLegendClick ? 'article-preview__legend-item--clickable' : ''}`}
+          onClick={onExistingLinksLegendClick}
+          role={onExistingLinksLegendClick ? 'button' : undefined}
+          tabIndex={onExistingLinksLegendClick ? 0 : undefined}
+          onKeyDown={onExistingLinksLegendClick ? (e) => e.key === 'Enter' && onExistingLinksLegendClick() : undefined}
+        >
           <span className="article-preview__legend-color article-preview__legend-color--existing"></span>
           Existing Links ({existingCount}{totalExistingLinks > existingCount ? ` of ${totalExistingLinks} highlighted` : ''})
         </span>

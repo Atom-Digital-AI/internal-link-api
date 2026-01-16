@@ -32,6 +32,9 @@ export function ContextualEditor({
   const [scrollToHighlightId, setScrollToHighlightId] = useState<string | null>(null);
   const [scrollToCardId, setScrollToCardId] = useState<string | null>(null);
 
+  // Control existing links section visibility from parent
+  const [showExistingLinks, setShowExistingLinks] = useState(false);
+
   // Compute highlight positions from content, suggestions, and existing links
   const { highlights, unmatchedSuggestions } = useTextHighlighter(
     pageData.extracted_content,
@@ -101,6 +104,29 @@ export function ContextualEditor({
     }
   }, []);
 
+  // Handle existing link click - scroll to corresponding highlight
+  const handleExistingLinkClick = useCallback((index: number) => {
+    const id = `existing-${index}`;
+    setActiveHighlightId(id);
+    setScrollToHighlightId(id);
+    setTimeout(() => setScrollToHighlightId(null), 100);
+  }, []);
+
+  // Handle existing link hover - scroll to and highlight the corresponding text
+  const handleExistingLinkHover = useCallback((index: number | null) => {
+    const id = index !== null ? `existing-${index}` : null;
+    setActiveHighlightId(id);
+    if (id) {
+      setScrollToHighlightId(id);
+      setTimeout(() => setScrollToHighlightId(null), 100);
+    }
+  }, []);
+
+  // Handle clicks on existing links legend/stats - expand and scroll to existing links section
+  const handleShowExistingLinks = useCallback(() => {
+    setShowExistingLinks(true);
+  }, []);
+
   // Handle copy - copy HTML link code to clipboard
   const handleCopy = useCallback(async (anchorText: string, targetUrl: string) => {
     const html = `<a href="${targetUrl}">${anchorText}</a>`;
@@ -127,6 +153,7 @@ export function ContextualEditor({
         url={pageData.url}
         stats={stats}
         onBack={onBack}
+        onExistingLinksClick={handleShowExistingLinks}
       />
 
       {suggestionsError && (
@@ -146,6 +173,7 @@ export function ContextualEditor({
           onHighlightClick={handleHighlightClick}
           onHighlightHover={handleHighlightHover}
           scrollToHighlightId={scrollToHighlightId}
+          onExistingLinksLegendClick={handleShowExistingLinks}
         />
 
         <ActionPanel
@@ -158,8 +186,12 @@ export function ContextualEditor({
           onCopy={handleCopy}
           onCardHover={handleCardHover}
           onCardClick={handleCardClick}
+          onExistingLinkClick={handleExistingLinkClick}
+          onExistingLinkHover={handleExistingLinkHover}
           onGetSuggestions={handleGetSuggestions}
           scrollToCardId={scrollToCardId}
+          showExistingLinks={showExistingLinks}
+          onShowExistingLinksChange={setShowExistingLinks}
         />
       </div>
     </div>

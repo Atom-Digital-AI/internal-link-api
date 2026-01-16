@@ -10,6 +10,7 @@ interface DetailHeaderProps {
     acceptedCount: number;
   };
   onBack: () => void;
+  onExistingLinksClick?: () => void;
 }
 
 /**
@@ -19,7 +20,8 @@ export function DetailHeader({
   title,
   url,
   stats,
-  onBack
+  onBack,
+  onExistingLinksClick
 }: DetailHeaderProps) {
   return (
     <div className="editor-header">
@@ -47,7 +49,13 @@ export function DetailHeader({
           <span className="editor-header__stat-value">{stats.wordCount.toLocaleString()}</span>
           <span className="editor-header__stat-label">words</span>
         </div>
-        <div className="editor-header__stat">
+        <div
+          className={`editor-header__stat ${onExistingLinksClick ? 'editor-header__stat--clickable' : ''}`}
+          onClick={onExistingLinksClick}
+          role={onExistingLinksClick ? 'button' : undefined}
+          tabIndex={onExistingLinksClick ? 0 : undefined}
+          onKeyDown={onExistingLinksClick ? (e) => e.key === 'Enter' && onExistingLinksClick() : undefined}
+        >
           <span className="editor-header__stat-value">{stats.existingLinks}</span>
           <span className="editor-header__stat-label">existing links</span>
         </div>

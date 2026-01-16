@@ -12,8 +12,12 @@ interface ActionPanelProps {
   onCopy: (anchorText: string, targetUrl: string) => void;
   onCardHover: (id: string | null) => void;
   onCardClick: (id: string) => void;
+  onExistingLinkClick: (index: number) => void;
+  onExistingLinkHover: (index: number | null) => void;
   onGetSuggestions: () => void;
   scrollToCardId: string | null;
+  showExistingLinks?: boolean;
+  onShowExistingLinksChange?: (show: boolean) => void;
 }
 
 /**
@@ -29,23 +33,55 @@ export function ActionPanel({
   onCopy,
   onCardHover,
   onCardClick,
+  onExistingLinkClick,
+  onExistingLinkHover,
   onGetSuggestions,
-  scrollToCardId
+  scrollToCardId,
+  showExistingLinks,
+  onShowExistingLinksChange
 }: ActionPanelProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [showExisting, setShowExisting] = useState(false);
+  const existingLinksRef = useRef<HTMLDivElement>(null);
+  // Use controlled state if provided, otherwise use local state
+  const [localShowExisting, setLocalShowExisting] = useState(false);
+  const showExisting = showExistingLinks ?? localShowExisting;
+  const setShowExisting = onShowExistingLinksChange ?? setLocalShowExisting;
 
   // Scroll to card when triggered externally (e.g., from highlight click)
   useEffect(() => {
     if (scrollToCardId && containerRef.current) {
-      const cardEl = containerRef.current.querySelector(
-        `[data-card-id="${scrollToCardId}"]`
-      );
-      if (cardEl) {
-        cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Check if this is an existing link card
+      if (scrollToCardId.startsWith('existing-')) {
+        // Ensure the existing links section is visible and scroll to it
+        if (!showExisting) {
+          setShowExisting(true);
+        }
+        // Wait for the section to expand, then scroll to the card
+        setTimeout(() => {
+          const cardEl = containerRef.current?.querySelector(
+            `[data-card-id="${scrollToCardId}"]`
+          );
+          if (cardEl) {
+            cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 50);
+      } else {
+        const cardEl = containerRef.current.querySelector(
+          `[data-card-id="${scrollToCardId}"]`
+        );
+        if (cardEl) {
+          cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
       }
     }
-  }, [scrollToCardId]);
+  }, [scrollToCardId, showExisting, setShowExisting]);
+
+  // Scroll to existing links section when it's opened
+  useEffect(() => {
+    if (showExisting && existingLinksRef.current) {
+      existingLinksRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [showExisting]);
 
   // Separate suggestions by status
   const pendingSuggestions = suggestions.filter(s => s.status === 'pending');
@@ -144,7 +180,7 @@ export function ActionPanel({
       </div>
 
       {/* Existing Links Section */}
-      <div className="action-panel__section">
+      <div className="action-panel__section" ref={existingLinksRef}>
         <button
           className="action-panel__section-toggle"
           onClick={() => setShowExisting(!showExisting)}
@@ -161,25 +197,34 @@ export function ActionPanel({
               <p className="action-panel__no-links">No internal links found on this page.</p>
             ) : (
               <ul className="action-panel__link-list">
-                {existingLinks.map((link, index) => (
-                  <li
-                    key={index}
-                    className={`action-panel__link-item ${link.is_target ? 'action-panel__link-item--target' : ''}`}
-                  >
-                    {link.is_target && (
-                      <span className="action-panel__target-badge">Target</span>
-                    )}
-                    <span className="action-panel__link-anchor">{link.anchor_text || '(no text)'}</span>
-                    <a
-                      href={link.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="action-panel__link-url"
+                {existingLinks.map((link, index) => {
+                  const cardId = `existing-${index}`;
+                  const isActive = activeCardId === cardId;
+                  return (
+                    <li
+                      key={index}
+                      data-card-id={cardId}
+                      className={`action-panel__link-item action-panel__link-item--clickable ${link.is_target ? 'action-panel__link-item--target' : ''} ${isActive ? 'action-panel__link-item--active' : ''}`}
+                      onClick={() => onExistingLinkClick(index)}
+                      onMouseEnter={() => onExistingLinkHover(index)}
+                      onMouseLeave={() => onExistingLinkHover(null)}
                     >
-                      {link.href}
-                    </a>
-                  </li>
-                ))}
+                      {link.is_target && (
+                        <span className="action-panel__target-badge">Target</span>
+                      )}
+                      <span className="action-panel__link-anchor">{link.anchor_text || '(no text)'}</span>
+                      <a
+                        href={link.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="action-panel__link-url"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {link.href}
+                      </a>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>
