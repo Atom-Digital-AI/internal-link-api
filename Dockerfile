@@ -1,3 +1,31 @@
+# Stage 1: Build frontend
+FROM node:20-alpine AS frontend-build
+
+WORKDIR /frontend
+
+# Copy frontend package files
+COPY frontend/package*.json ./
+
+# Install dependencies
+RUN npm ci
+
+# Copy frontend source
+COPY frontend/ ./
+
+# Build args for Vite environment variables
+ARG VITE_API_URL=""
+ARG VITE_GEMINI_API_KEY
+ARG VITE_GEMINI_MODEL=gemini-1.5-flash
+
+# Set environment variables for build
+ENV VITE_API_URL=$VITE_API_URL
+ENV VITE_GEMINI_API_KEY=$VITE_GEMINI_API_KEY
+ENV VITE_GEMINI_MODEL=$VITE_GEMINI_MODEL
+
+# Build the frontend
+RUN npm run build
+
+# Stage 2: Python API with frontend static files
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -14,7 +42,10 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
-COPY . .
+COPY main.py models.py scraper.py sitemap_parser.py ./
+
+# Copy built frontend from first stage
+COPY --from=frontend-build /frontend/dist ./static
 
 # Expose port
 EXPOSE 8000

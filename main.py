@@ -1,7 +1,10 @@
 import asyncio
 import os
+from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 from models import (
     HealthResponse,
@@ -123,6 +126,24 @@ async def bulk_analyze(request: BulkAnalyzeRequest):
             failed=failed,
         ),
     )
+
+
+# Serve static frontend files if they exist (production build)
+static_dir = Path(__file__).parent / "static"
+if static_dir.exists():
+    # Serve static assets (JS, CSS, etc.)
+    app.mount("/assets", StaticFiles(directory=static_dir / "assets"), name="assets")
+
+    # Catch-all route for SPA - must be last
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        """Serve the React SPA for any non-API routes."""
+        # Check if it's a file in static directory
+        file_path = static_dir / full_path
+        if file_path.exists() and file_path.is_file():
+            return FileResponse(file_path)
+        # Otherwise serve index.html for SPA routing
+        return FileResponse(static_dir / "index.html")
 
 
 if __name__ == "__main__":

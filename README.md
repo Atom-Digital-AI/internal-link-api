@@ -137,14 +137,19 @@ npm run dev
 
 ## Railway Deployment
 
-Railway auto-detects the Dockerfile. Push to GitHub and connect to Railway:
+The Dockerfile builds both frontend and API into a single container. Railway auto-detects it.
 
 1. Create new project in Railway
 2. Connect GitHub repo
-3. Railway builds from Dockerfile automatically
-4. Set environment variables in Railway dashboard:
-   - For the frontend service: `VITE_GEMINI_API_KEY`, `VITE_GEMINI_MODEL`, `VITE_API_URL`
+3. Set **build arguments** in Railway (Settings → Build → Build Arguments):
+   - `VITE_GEMINI_API_KEY` = your Gemini API key
+   - `VITE_GEMINI_MODEL` = `gemini-1.5-flash` (optional)
+4. Deploy - Railway builds and serves everything from one service
 5. Set custom domain if needed
+
+The API serves both:
+- API endpoints at `/health`, `/config`, `/sitemap`, `/analyze`, `/bulk-analyze`
+- Frontend at `/` (root) and all other paths
 
 ## CORS
 
