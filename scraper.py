@@ -71,11 +71,36 @@ async def analyze_page(url: str, target_pattern: str) -> AnalyzeResponse:
     # Count words
     word_count = len(extracted_content.split()) if extracted_content else 0
 
-    # Find all links
+    # Find all links - only within main content area (exclude nav, header, footer)
     internal_links: list[LinkInfo] = []
     external_link_count = 0
 
-    for a_tag in soup.find_all("a", href=True):
+    # Create a copy of the soup for link extraction, excluding nav elements
+    content_soup = BeautifulSoup(html, "lxml")
+
+    # Remove navigation elements before extracting links
+    for nav_element in content_soup.find_all(["nav", "header", "footer"]):
+        nav_element.decompose()
+
+    # Also remove common navigation classes/ids
+    for selector in [
+        {"class_": "nav"},
+        {"class_": "navigation"},
+        {"class_": "menu"},
+        {"class_": "header"},
+        {"class_": "footer"},
+        {"class_": "sidebar"},
+        {"id": "nav"},
+        {"id": "navigation"},
+        {"id": "menu"},
+        {"id": "header"},
+        {"id": "footer"},
+        {"id": "sidebar"},
+    ]:
+        for element in content_soup.find_all(**selector):
+            element.decompose()
+
+    for a_tag in content_soup.find_all("a", href=True):
         href = a_tag.get("href", "")
 
         # Skip empty, anchor-only, and javascript hrefs
