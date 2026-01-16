@@ -262,15 +262,22 @@ export function findAnchorInRange(
 /**
  * Finds all occurrences of text in content
  * Useful for finding existing link anchor texts
+ * Uses multiple matching strategies for robustness
  */
 export function findAllOccurrences(
   content: string,
   searchText: string
 ): Array<{ start: number; end: number }> {
   const results: Array<{ start: number; end: number }> = [];
-  const lowerContent = content.toLowerCase();
-  const lowerSearch = searchText.toLowerCase();
 
+  // Decode HTML entities and clean up the search text
+  const cleanSearch = decodeHtmlEntities(searchText).trim();
+  if (!cleanSearch) return results;
+
+  const lowerContent = content.toLowerCase();
+  const lowerSearch = cleanSearch.toLowerCase();
+
+  // Strategy 1: Exact match (case-insensitive)
   let startIndex = 0;
   while (true) {
     const index = lowerContent.indexOf(lowerSearch, startIndex);
@@ -278,10 +285,69 @@ export function findAllOccurrences(
 
     results.push({
       start: index,
-      end: index + searchText.length
+      end: index + cleanSearch.length
     });
 
     startIndex = index + 1;
+  }
+
+  // If we found exact matches, return them
+  if (results.length > 0) return results;
+
+  // Strategy 2: Normalized whitespace match
+  // Collapse multiple spaces in search text and try to find it
+  const normalizedSearch = normalizeText(cleanSearch);
+  if (normalizedSearch.length < 3) return results;
+
+  // Build position map for the content
+  const positionMap = buildPositionMap(content);
+  const normalizedContent = normalizeText(content);
+
+  startIndex = 0;
+  while (true) {
+    const index = normalizedContent.indexOf(normalizedSearch, startIndex);
+    if (index === -1) break;
+
+    const originalStart = positionMap.findOriginalIndex(index);
+    const originalEnd = positionMap.findOriginalIndex(index + normalizedSearch.length);
+
+    results.push({
+      start: originalStart,
+      end: originalEnd
+    });
+
+    startIndex = index + 1;
+  }
+
+  // If we found normalized matches, return them
+  if (results.length > 0) return results;
+
+  // Strategy 3: Fuzzy match for longer search texts
+  if (normalizedSearch.length >= 10) {
+    const fuzzyThreshold = 0.85;
+
+    // Slide through content looking for similar text
+    for (let i = 0; i <= normalizedContent.length - normalizedSearch.length; i += 5) {
+      const window = normalizedContent.slice(i, i + normalizedSearch.length);
+      const similarity = calculateSimilarity(normalizedSearch, window);
+
+      if (similarity >= fuzzyThreshold) {
+        const originalStart = positionMap.findOriginalIndex(i);
+        const originalEnd = positionMap.findOriginalIndex(i + normalizedSearch.length);
+
+        // Check we haven't already found a match at this position
+        const alreadyFound = results.some(
+          r => Math.abs(r.start - originalStart) < 5
+        );
+
+        if (!alreadyFound) {
+          results.push({
+            start: originalStart,
+            end: originalEnd
+          });
+        }
+      }
+    }
   }
 
   return results;

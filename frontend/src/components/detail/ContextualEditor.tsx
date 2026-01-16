@@ -142,6 +142,7 @@ export function ContextualEditor({
           highlights={highlights}
           activeHighlightId={activeHighlightId}
           suggestionStates={suggestionStates}
+          totalExistingLinks={pageData.internal_links.total}
           onHighlightClick={handleHighlightClick}
           onHighlightHover={handleHighlightHover}
           scrollToHighlightId={scrollToHighlightId}

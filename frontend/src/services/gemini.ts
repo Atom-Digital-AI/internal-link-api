@@ -82,18 +82,76 @@ IMPORTANT: Respond ONLY with valid JSON in this exact format, no other text:
     throw new Error('No response from Gemini');
   }
 
-  // Parse JSON from response (handle potential markdown code blocks)
-  let jsonText = text;
-  const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if (jsonMatch) {
-    jsonText = jsonMatch[1];
-  }
+  // Parse JSON from response using multiple extraction strategies
+  const extractJson = (rawText: string): LinkSuggestion[] => {
+    // Strategy 1: Try extracting from ```json...``` or ```...``` code blocks
+    const codeBlockMatch = rawText.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (codeBlockMatch) {
+      try {
+        const parsed = JSON.parse(codeBlockMatch[1].trim());
+        if (parsed.suggestions && Array.isArray(parsed.suggestions)) {
+          return parsed.suggestions;
+        }
+      } catch {
+        // Continue to next strategy
+      }
+    }
+
+    // Strategy 2: Try finding a JSON object pattern starting with { and containing "suggestions"
+    const jsonObjectMatch = rawText.match(/\{[\s\S]*"suggestions"\s*:\s*\[[\s\S]*\][\s\S]*\}/);
+    if (jsonObjectMatch) {
+      try {
+        const parsed = JSON.parse(jsonObjectMatch[0]);
+        if (parsed.suggestions && Array.isArray(parsed.suggestions)) {
+          return parsed.suggestions;
+        }
+      } catch {
+        // Continue to next strategy
+      }
+    }
+
+    // Strategy 3: Try finding just the array portion
+    const arrayMatch = rawText.match(/\[\s*\{[\s\S]*"sentence"[\s\S]*\}\s*\]/);
+    if (arrayMatch) {
+      try {
+        const parsed = JSON.parse(arrayMatch[0]);
+        if (Array.isArray(parsed)) {
+          return parsed;
+        }
+      } catch {
+        // Continue to next strategy
+      }
+    }
+
+    // Strategy 4: Try parsing the raw text directly
+    try {
+      const parsed = JSON.parse(rawText.trim());
+      if (parsed.suggestions && Array.isArray(parsed.suggestions)) {
+        return parsed.suggestions;
+      }
+      if (Array.isArray(parsed)) {
+        return parsed;
+      }
+    } catch {
+      // All strategies failed
+    }
+
+    throw new Error('Could not extract valid JSON from response');
+  };
 
   try {
-    const parsed = JSON.parse(jsonText.trim());
-    return parsed.suggestions || [];
-  } catch {
+    const suggestions = extractJson(text);
+
+    // Validate that each suggestion has required fields
+    return suggestions.filter(s =>
+      s &&
+      typeof s.sentence === 'string' &&
+      typeof s.targetUrl === 'string' &&
+      typeof s.anchorText === 'string'
+    );
+  } catch (error) {
     console.error('Failed to parse Gemini response:', text);
+    console.error('Parse error:', error);
     throw new Error('Failed to parse AI suggestions. Please try again.');
   }
 }

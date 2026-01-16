@@ -719,6 +719,56 @@ button.small {
   word-wrap: break-word;
 }
 
+/* Markdown Formatting */
+.markdown-heading {
+  display: block;
+  font-weight: 700;
+  color: #1a1a2e;
+  margin-top: 0.5em;
+}
+
+.markdown-heading--h1 {
+  font-size: 1.5em;
+  margin-bottom: 0.6em;
+}
+
+.markdown-heading--h2 {
+  font-size: 1.3em;
+  margin-bottom: 0.5em;
+}
+
+.markdown-heading--h3 {
+  font-size: 1.15em;
+  margin-bottom: 0.4em;
+}
+
+.markdown-heading--h4,
+.markdown-heading--h5,
+.markdown-heading--h6 {
+  font-size: 1.05em;
+  margin-bottom: 0.3em;
+}
+
+.markdown-list-item {
+  display: block;
+  margin: 0.2em 0;
+}
+
+.markdown-bullet {
+  display: inline-block;
+  width: 1em;
+  color: #666;
+}
+
+.markdown-list-item--numbered {
+  list-style-type: decimal;
+}
+
+.markdown-paragraph-break {
+  display: block;
+  height: 0.75em;
+}
+
 .highlight {
   padding: 2px 4px;
   margin: 0 -2px;

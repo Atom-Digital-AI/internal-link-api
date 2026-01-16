@@ -1,4 +1,4 @@
-import { useMemo, Fragment } from 'react';
+import { useMemo, Fragment, type ReactNode } from 'react';
 import type { TextRange, SuggestionStatus } from '../../types';
 
 interface HighlightedContentProps {
@@ -8,6 +8,81 @@ interface HighlightedContentProps {
   suggestionStates: Map<string, SuggestionStatus>;
   onHighlightClick: (id: string) => void;
   onHighlightHover: (id: string | null) => void;
+}
+
+/**
+ * Renders a line of text with basic markdown formatting
+ * Supports: headings (#), bold (**), italic (*), and list items (- or *)
+ */
+function renderMarkdownLine(line: string, keyPrefix: string): ReactNode {
+  // Check for headings
+  const headingMatch = line.match(/^(#{1,6})\s+(.+)$/);
+  if (headingMatch) {
+    const level = headingMatch[1].length;
+    const text = headingMatch[2];
+    return (
+      <span
+        key={keyPrefix}
+        className={`markdown-heading markdown-heading--h${level}`}
+      >
+        {text}
+      </span>
+    );
+  }
+
+  // Check for list items
+  const listMatch = line.match(/^(\s*)[-*]\s+(.+)$/);
+  if (listMatch) {
+    const indent = listMatch[1].length;
+    const text = listMatch[2];
+    return (
+      <span
+        key={keyPrefix}
+        className="markdown-list-item"
+        style={{ paddingLeft: `${indent * 0.5 + 1}em` }}
+      >
+        <span className="markdown-bullet">•</span>
+        {renderInlineFormatting(text)}
+      </span>
+    );
+  }
+
+  // Check for numbered list items
+  const numberedMatch = line.match(/^(\s*)\d+\.\s+(.+)$/);
+  if (numberedMatch) {
+    const indent = numberedMatch[1].length;
+    const text = numberedMatch[2];
+    return (
+      <span
+        key={keyPrefix}
+        className="markdown-list-item markdown-list-item--numbered"
+        style={{ paddingLeft: `${indent * 0.5 + 1}em` }}
+      >
+        {renderInlineFormatting(text)}
+      </span>
+    );
+  }
+
+  // Regular text with inline formatting
+  return <span key={keyPrefix}>{renderInlineFormatting(line)}</span>;
+}
+
+/**
+ * Renders inline markdown formatting (bold, italic)
+ */
+function renderInlineFormatting(text: string): ReactNode {
+  // Simple approach: just return the text with markdown symbols stripped
+  // For a more complete solution, we'd parse and render bold/italic properly
+  // But this keeps the highlighting logic simpler
+
+  // Remove markdown bold/italic markers for cleaner display
+  const cleaned = text
+    .replace(/\*\*([^*]+)\*\*/g, '$1')  // Remove **bold**
+    .replace(/\*([^*]+)\*/g, '$1')      // Remove *italic*
+    .replace(/__([^_]+)__/g, '$1')      // Remove __bold__
+    .replace(/_([^_]+)_/g, '$1');       // Remove _italic_
+
+  return cleaned;
 }
 
 /**
@@ -95,24 +170,42 @@ export function HighlightedContent({
     return classes.join(' ');
   };
 
+  /**
+   * Renders text content with markdown formatting while preserving newlines
+   */
+  const renderTextContent = (text: string, keyPrefix: string): ReactNode => {
+    const lines = text.split('\n');
+
+    return lines.map((line, i) => {
+      const isEmptyLine = line.trim() === '';
+      const isLastLine = i === lines.length - 1;
+
+      return (
+        <Fragment key={`${keyPrefix}-line-${i}`}>
+          {isEmptyLine ? (
+            // Empty lines create paragraph breaks
+            <span className="markdown-paragraph-break" />
+          ) : (
+            renderMarkdownLine(line, `${keyPrefix}-content-${i}`)
+          )}
+          {!isLastLine && <br />}
+        </Fragment>
+      );
+    });
+  };
+
   return (
     <div className="highlighted-content">
       {segments.map(segment => {
         if (segment.type === 'text') {
-          // Preserve whitespace and newlines
           return (
             <span key={segment.key}>
-              {segment.content.split('\n').map((line, i, arr) => (
-                <Fragment key={i}>
-                  {line}
-                  {i < arr.length - 1 && <br />}
-                </Fragment>
-              ))}
+              {renderTextContent(segment.content, segment.key)}
             </span>
           );
         }
 
-        // Highlighted segment
+        // Highlighted segment (don't apply markdown formatting to highlights)
         return (
           <span
             key={segment.key}

@@ -7,6 +7,7 @@ interface ArticlePreviewProps {
   highlights: TextRange[];
   activeHighlightId: string | null;
   suggestionStates: Map<string, SuggestionStatus>;
+  totalExistingLinks: number;
   onHighlightClick: (id: string) => void;
   onHighlightHover: (id: string | null) => void;
   scrollToHighlightId: string | null;
@@ -20,6 +21,7 @@ export function ArticlePreview({
   highlights,
   activeHighlightId,
   suggestionStates,
+  totalExistingLinks,
   onHighlightClick,
   onHighlightHover,
   scrollToHighlightId
@@ -59,7 +61,7 @@ export function ArticlePreview({
       <div className="article-preview__legend">
         <span className="article-preview__legend-item">
           <span className="article-preview__legend-color article-preview__legend-color--existing"></span>
-          Existing Links ({existingCount})
+          Existing Links ({existingCount}{totalExistingLinks > existingCount ? ` of ${totalExistingLinks} highlighted` : ''})
         </span>
         <span className="article-preview__legend-item">
           <span className="article-preview__legend-color article-preview__legend-color--suggestion"></span>

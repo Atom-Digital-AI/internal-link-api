@@ -57,8 +57,25 @@ async def analyze_page(url: str, target_pattern: str) -> AnalyzeResponse:
         if h1_tag:
             title = h1_tag.get_text(strip=True)
 
-    # Extract main content using Trafilatura
-    extracted_content = trafilatura.extract(html) or ""
+    # Extract main content using Trafilatura with HTML output to preserve links
+    # This ensures we only count links within the actual article content
+    content_html = trafilatura.extract(
+        html,
+        output_format='html',
+        include_links=True,
+        include_images=False,
+        include_tables=True,
+    ) or ""
+
+    # Also get plain text version for word count
+    extracted_content = trafilatura.extract(
+        html,
+        output_format='markdown',
+        include_links=False,
+        include_images=False,
+        include_tables=True,
+    ) or ""
+
     if not extracted_content:
         # Fallback to BeautifulSoup text extraction
         body = soup.find("body")
@@ -66,41 +83,20 @@ async def analyze_page(url: str, target_pattern: str) -> AnalyzeResponse:
             # Remove script and style elements
             for element in body(["script", "style", "nav", "footer", "header"]):
                 element.decompose()
-            extracted_content = body.get_text(separator=" ", strip=True)
+            extracted_content = body.get_text(separator="\n\n", strip=True)
+            content_html = str(body)
 
     # Count words
     word_count = len(extracted_content.split()) if extracted_content else 0
 
-    # Find all links - only within main content area (exclude nav, header, footer)
+    # Find all links within the extracted main content only
     internal_links: list[LinkInfo] = []
     external_link_count = 0
 
-    # Create a copy of the soup for link extraction, excluding nav elements
-    content_soup = BeautifulSoup(html, "lxml")
+    # Parse the extracted content HTML to find links
+    content_soup = BeautifulSoup(content_html, "lxml") if content_html else None
 
-    # Remove navigation elements before extracting links
-    for nav_element in content_soup.find_all(["nav", "header", "footer"]):
-        nav_element.decompose()
-
-    # Also remove common navigation classes/ids
-    for selector in [
-        {"class_": "nav"},
-        {"class_": "navigation"},
-        {"class_": "menu"},
-        {"class_": "header"},
-        {"class_": "footer"},
-        {"class_": "sidebar"},
-        {"id": "nav"},
-        {"id": "navigation"},
-        {"id": "menu"},
-        {"id": "header"},
-        {"id": "footer"},
-        {"id": "sidebar"},
-    ]:
-        for element in content_soup.find_all(**selector):
-            element.decompose()
-
-    for a_tag in content_soup.find_all("a", href=True):
+    for a_tag in (content_soup.find_all("a", href=True) if content_soup else []):
         href = a_tag.get("href", "")
 
         # Skip empty, anchor-only, and javascript hrefs
