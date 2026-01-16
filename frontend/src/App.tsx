@@ -3,11 +3,10 @@ import type {
   PageInfo,
   PageResult,
   AnalyzeResponse,
-  LinkSuggestion,
   ConfigResponse,
 } from './types';
 import { getConfig, getSitemap, bulkAnalyze, analyzePage } from './services/api';
-import { getInternalLinkSuggestions } from './services/gemini';
+import { ContextualEditor } from './components/detail';
 import './App.css';
 
 type Step = 'setup' | 'select' | 'results' | 'detail';
@@ -39,8 +38,6 @@ function App() {
 
   // Detail view
   const [detailData, setDetailData] = useState<AnalyzeResponse | null>(null);
-  const [suggestions, setSuggestions] = useState<LinkSuggestion[]>([]);
-  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
 
   useEffect(() => {
     getConfig().then(setConfig).catch(console.error);
@@ -92,45 +89,15 @@ function App() {
   const handleViewDetail = async (url: string) => {
     setError(null);
     setLoading(true);
-    setSuggestions([]);
 
     try {
       const data = await analyzePage(url, targetPattern);
       setDetailData(data);
       setStep('detail');
-
-      // Auto-fetch suggestions if page needs links
-      if (data.internal_links.to_target_pages === 0 || data.link_density > 500) {
-        setLoadingSuggestions(true);
-        try {
-          const sug = await getInternalLinkSuggestions(data, targetPages);
-          setSuggestions(sug);
-        } catch (err) {
-          console.error('Failed to get suggestions:', err);
-        } finally {
-          setLoadingSuggestions(false);
-        }
-      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to analyze page');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleGetSuggestions = async () => {
-    if (!detailData) return;
-
-    setLoadingSuggestions(true);
-    setError(null);
-
-    try {
-      const sug = await getInternalLinkSuggestions(detailData, targetPages);
-      setSuggestions(sug);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to get AI suggestions');
-    } finally {
-      setLoadingSuggestions(false);
     }
   };
 
@@ -333,96 +300,11 @@ function App() {
       )}
 
       {step === 'detail' && detailData && (
-        <section className="detail">
-          <div className="detail-header">
-            <h2>{detailData.title || 'Untitled'}</h2>
-            <a href={detailData.url} target="_blank" rel="noopener noreferrer">
-              {detailData.url}
-            </a>
-          </div>
-
-          <div className="detail-stats">
-            <div className="stat">
-              <span className="stat-value">{detailData.word_count}</span>
-              <span className="stat-label">Words</span>
-            </div>
-            <div className="stat">
-              <span className="stat-value">{detailData.internal_links.total}</span>
-              <span className="stat-label">Internal Links</span>
-            </div>
-            <div className="stat">
-              <span className="stat-value">{detailData.internal_links.to_target_pages}</span>
-              <span className="stat-label">Target Links</span>
-            </div>
-            <div className="stat">
-              <span className="stat-value">{detailData.external_links}</span>
-              <span className="stat-label">External Links</span>
-            </div>
-          </div>
-
-          <div className="suggestions-section">
-            <div className="suggestions-header">
-              <h3>AI Link Suggestions</h3>
-              <button
-                onClick={handleGetSuggestions}
-                disabled={loadingSuggestions}
-                className="primary"
-              >
-                {loadingSuggestions ? 'Getting Suggestions...' : 'Get AI Suggestions'}
-              </button>
-            </div>
-
-            {suggestions.length > 0 && (
-              <div className="suggestions-list">
-                {suggestions.map((sug, i) => (
-                  <div key={i} className="suggestion">
-                    <div className="suggestion-quote">"{sug.sentence}"</div>
-                    <div className="suggestion-details">
-                      <div>
-                        <strong>Anchor text:</strong> {sug.anchorText}
-                      </div>
-                      <div>
-                        <strong>Link to:</strong>{' '}
-                        <a href={sug.targetUrl} target="_blank" rel="noopener noreferrer">
-                          {sug.targetUrl}
-                        </a>
-                      </div>
-                      <div className="suggestion-reason">{sug.reason}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {!loadingSuggestions && suggestions.length === 0 && (
-              <p className="no-suggestions">
-                Click "Get AI Suggestions" to analyze this page for internal linking opportunities.
-              </p>
-            )}
-          </div>
-
-          <div className="existing-links">
-            <h3>Existing Internal Links ({detailData.internal_links.total})</h3>
-            {detailData.internal_links.links.length > 0 ? (
-              <ul>
-                {detailData.internal_links.links.map((link, i) => (
-                  <li key={i} className={link.is_target ? 'is-target' : ''}>
-                    <a href={link.href} target="_blank" rel="noopener noreferrer">
-                      {link.anchor_text || link.href}
-                    </a>
-                    {link.is_target && <span className="badge good">Target</span>}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p>No internal links found.</p>
-            )}
-          </div>
-
-          <div className="actions">
-            <button onClick={() => setStep('results')}>Back to Results</button>
-          </div>
-        </section>
+        <ContextualEditor
+          pageData={detailData}
+          targetPages={targetPages}
+          onBack={() => setStep('results')}
+        />
       )}
 
       {loading && step !== 'detail' && (

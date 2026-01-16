@@ -64,3 +64,87 @@ export interface LinkSuggestion {
   anchorText: string;
   reason: string;
 }
+
+// Text highlighting types for the contextual editor
+export type HighlightType = 'existing-link' | 'suggestion';
+
+export interface HighlightMetadata {
+  suggestionIndex?: number;
+  linkInfo?: LinkInfo;
+  suggestion?: LinkSuggestion;
+}
+
+export interface TextRange {
+  id: string;
+  startIndex: number;
+  endIndex: number;
+  type: HighlightType;
+  metadata: HighlightMetadata;
+}
+
+export interface MatchResult {
+  found: boolean;
+  range?: { start: number; end: number };
+  confidence: number;
+  matchType: 'exact' | 'normalized' | 'fuzzy' | 'none';
+}
+
+// Suggestion state management
+export type SuggestionStatus = 'pending' | 'accepted' | 'ignored';
+
+export interface EnhancedSuggestion extends LinkSuggestion {
+  id: string;
+  status: SuggestionStatus;
+  highlightRange: TextRange | null;
+  matchConfidence: number;
+}
+
+// Component prop types
+export interface ArticlePreviewProps {
+  content: string;
+  highlights: TextRange[];
+  activeHighlightId: string | null;
+  suggestionStates: Map<string, SuggestionStatus>;
+  onHighlightClick: (id: string) => void;
+  onHighlightHover: (id: string | null) => void;
+}
+
+export interface SuggestionCardProps {
+  suggestion: EnhancedSuggestion;
+  isActive: boolean;
+  onAccept: () => void;
+  onIgnore: () => void;
+  onCopy: () => void;
+  onHover: (hovering: boolean) => void;
+  onClick: () => void;
+}
+
+export interface ActionPanelProps {
+  suggestions: EnhancedSuggestion[];
+  existingLinks: LinkInfo[];
+  activeCardId: string | null;
+  onAccept: (id: string) => void;
+  onIgnore: (id: string) => void;
+  onCopy: (anchorText: string, targetUrl: string) => void;
+  onCardHover: (id: string | null) => void;
+  onCardClick: (id: string) => void;
+}
+
+export interface DetailHeaderProps {
+  title: string | null;
+  url: string;
+  stats: {
+    wordCount: number;
+    existingLinks: number;
+    targetLinks: number;
+    suggestionsCount: number;
+    acceptedCount: number;
+  };
+  onBack: () => void;
+}
+
+export interface ContextualEditorProps {
+  pageData: AnalyzeResponse;
+  targetPages: PageInfo[];
+  onBack: () => void;
+}
