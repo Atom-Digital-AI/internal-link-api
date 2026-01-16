@@ -5,7 +5,8 @@ import type {
   BulkAnalyzeResponse,
 } from '../types';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+// Use relative URLs in production (same origin), absolute URL for local dev
+const API_BASE = import.meta.env.VITE_API_URL || '';
 
 async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(url, {
