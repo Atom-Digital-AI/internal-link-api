@@ -5,7 +5,22 @@ services:
       - "8000:8000"
     volumes:
       - .:/app
+      - /app/frontend  # Exclude frontend from volume mount
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
     environment:
       - PYTHONUNBUFFERED=1
-      - MAX_BULK_URLS=${MAX_BULK_URLS:-100}  # Max URLs allowed in bulk-analyze
+      - MAX_BULK_URLS=${MAX_BULK_URLS:-100}
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules  # Preserve node_modules from container
+    environment:
+      - VITE_API_URL=http://localhost:8000
+      - VITE_GEMINI_API_KEY=${VITE_GEMINI_API_KEY:-}
+      - VITE_GEMINI_MODEL=${VITE_GEMINI_MODEL:-gemini-1.5-flash}

@@ -1,18 +1,62 @@
-# Internal Link Finder API
+# Internal Link Finder
 
-A FastAPI backend for analyzing internal links on websites. Designed for SEO analysis workflows.
+A full-stack application for analyzing internal links on websites. Includes a FastAPI backend for page analysis and a React frontend with Gemini AI-powered link suggestions.
 
 ## Quick Start
 
 ```bash
-# Build and run with Docker
+# Build and run full stack with Docker
 docker compose up --build
 
 # API available at http://localhost:8000
-# Docs at http://localhost:8000/docs
+# Frontend available at http://localhost:5173
+# API docs at http://localhost:8000/docs
 ```
 
-## Endpoints
+## Project Structure
+
+```
+internal-link-api/
+├── main.py              # FastAPI app + routes
+├── scraper.py           # URL fetching + parsing logic
+├── sitemap_parser.py    # Sitemap fetching + parsing
+├── models.py            # Pydantic models
+├── requirements.txt     # Python dependencies
+├── Dockerfile           # API container build
+├── docker-compose.yml   # Local development
+└── frontend/            # React SPA
+    ├── src/
+    │   ├── App.tsx      # Main component
+    │   ├── types.ts     # TypeScript types
+    │   └── services/
+    │       ├── api.ts   # Backend API client
+    │       └── gemini.ts # Gemini AI integration
+    ├── Dockerfile       # Production build
+    └── Dockerfile.dev   # Development with hot reload
+```
+
+## Environment Variables
+
+### Backend (API)
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MAX_BULK_URLS` | 100 | Maximum URLs allowed in bulk-analyze |
+
+### Frontend
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `VITE_API_URL` | http://localhost:8000 | Backend API URL |
+| `VITE_GEMINI_API_KEY` | (required) | Gemini API key for AI suggestions |
+| `VITE_GEMINI_MODEL` | gemini-1.5-flash | Gemini model to use |
+
+For local development, create `frontend/.env`:
+```bash
+VITE_API_URL=http://localhost:8000
+VITE_GEMINI_API_KEY=your-api-key-here
+VITE_GEMINI_MODEL=gemini-1.5-flash
+```
+
+## API Endpoints
 
 ### GET /health
 Health check for deployment monitoring.
@@ -20,6 +64,14 @@ Health check for deployment monitoring.
 ```bash
 curl http://localhost:8000/health
 # {"status":"ok","version":"1.0.0"}
+```
+
+### GET /config
+Get API configuration (max bulk URLs limit).
+
+```bash
+curl http://localhost:8000/config
+# {"max_bulk_urls":100}
 ```
 
 ### POST /sitemap
@@ -63,7 +115,7 @@ curl -X POST http://localhost:8000/bulk-analyze \
 ## Local Development
 
 ```bash
-# Run with hot reload
+# Run full stack with hot reload
 docker compose up --build
 
 # View logs
@@ -71,6 +123,16 @@ docker compose logs -f
 
 # Stop
 docker compose down
+
+# Rebuild after changes
+docker compose up --build
+```
+
+### Frontend Only (without Docker)
+```bash
+cd frontend
+npm install
+npm run dev
 ```
 
 ## Railway Deployment
@@ -80,11 +142,21 @@ Railway auto-detects the Dockerfile. Push to GitHub and connect to Railway:
 1. Create new project in Railway
 2. Connect GitHub repo
 3. Railway builds from Dockerfile automatically
-4. Set custom domain if needed
+4. Set environment variables in Railway dashboard:
+   - For the frontend service: `VITE_GEMINI_API_KEY`, `VITE_GEMINI_MODEL`, `VITE_API_URL`
+5. Set custom domain if needed
 
 ## CORS
 
-Configured for:
+API configured for:
 - `http://localhost:*`
 - `https://*.web.app`
 - `https://*.firebaseapp.com`
+
+## Features
+
+- **Sitemap Parsing**: Fetches and parses XML sitemaps (including gzipped)
+- **Link Analysis**: Counts internal/external links, calculates link density
+- **Bulk Processing**: Analyze multiple pages with rate limiting
+- **AI Suggestions**: Gemini-powered recommendations for internal linking opportunities
+- **Cost Protection**: Configurable URL limits to prevent excessive API usage
