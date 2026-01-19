@@ -6,7 +6,7 @@ import type {
   ConfigResponse,
   SavedSession,
 } from './types';
-import { getConfig, getSitemap, bulkAnalyze, analyzePage } from './services/api';
+import { getConfig, getSitemap, analyzePage } from './services/api';
 import { getSavedSessions, saveSession, deleteSession, createSession } from './services/storage';
 import { ContextualEditor } from './components/detail';
 import { SavedSessions } from './components/SavedSessions';
@@ -38,6 +38,9 @@ function App() {
     has_good_density: number;
     failed: number;
   } | null>(null);
+
+  // Analysis progress
+  const [analysisProgress, setAnalysisProgress] = useState({ current: 0, total: 0 });
 
   // Detail view
   const [detailData, setDetailData] = useState<AnalyzeResponse | null>(null);
@@ -79,19 +82,73 @@ function App() {
     setError(null);
     setLoading(true);
 
+    const urls = Array.from(selectedUrls);
+    const total = urls.length;
+    setAnalysisProgress({ current: 0, total });
+
+    const pageResults: PageResult[] = [];
+    let needsLinks = 0;
+    let hasGoodDensity = 0;
+    let failed = 0;
+
     try {
-      const data = await bulkAnalyze(
-        Array.from(selectedUrls),
-        targetPattern,
-        500
-      );
-      setResults(data.results);
-      setSummary(data.summary);
+      for (let i = 0; i < urls.length; i++) {
+        const url = urls[i];
+        try {
+          const data = await analyzePage(url, targetPattern);
+          const linkDensity = data.word_count > 0
+            ? data.word_count / (data.internal_links.to_target_pages || 1)
+            : 0;
+          const status = data.internal_links.to_target_pages === 0 || linkDensity > 500
+            ? 'needs_links'
+            : 'good';
+
+          pageResults.push({
+            url: data.url,
+            title: data.title,
+            word_count: data.word_count,
+            internal_link_count: data.internal_links.total,
+            target_link_count: data.internal_links.to_target_pages,
+            link_density: linkDensity,
+            status,
+            error: null,
+          });
+
+          if (status === 'needs_links') {
+            needsLinks++;
+          } else {
+            hasGoodDensity++;
+          }
+        } catch (err) {
+          pageResults.push({
+            url,
+            title: null,
+            word_count: 0,
+            internal_link_count: 0,
+            target_link_count: 0,
+            link_density: 0,
+            status: 'failed',
+            error: err instanceof Error ? err.message : 'Failed to analyze',
+          });
+          failed++;
+        }
+
+        setAnalysisProgress({ current: i + 1, total });
+      }
+
+      setResults(pageResults);
+      setSummary({
+        total_scanned: total,
+        needs_links: needsLinks,
+        has_good_density: hasGoodDensity,
+        failed,
+      });
       setStep('results');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to analyze pages');
     } finally {
       setLoading(false);
+      setAnalysisProgress({ current: 0, total: 0 });
     }
   };
 
@@ -180,18 +237,75 @@ function App() {
     setError(null);
     setLoading(true);
 
-    try {
-      const urlsToAnalyze = selectedUrls.size > 0
-        ? Array.from(selectedUrls)
-        : results.map(r => r.url);
+    const urls = selectedUrls.size > 0
+      ? Array.from(selectedUrls)
+      : results.map(r => r.url);
 
-      const data = await bulkAnalyze(urlsToAnalyze, targetPattern, 500);
-      setResults(data.results);
-      setSummary(data.summary);
+    const total = urls.length;
+    setAnalysisProgress({ current: 0, total });
+
+    const pageResults: PageResult[] = [];
+    let needsLinks = 0;
+    let hasGoodDensity = 0;
+    let failed = 0;
+
+    try {
+      for (let i = 0; i < urls.length; i++) {
+        const url = urls[i];
+        try {
+          const data = await analyzePage(url, targetPattern);
+          const linkDensity = data.word_count > 0
+            ? data.word_count / (data.internal_links.to_target_pages || 1)
+            : 0;
+          const status = data.internal_links.to_target_pages === 0 || linkDensity > 500
+            ? 'needs_links'
+            : 'good';
+
+          pageResults.push({
+            url: data.url,
+            title: data.title,
+            word_count: data.word_count,
+            internal_link_count: data.internal_links.total,
+            target_link_count: data.internal_links.to_target_pages,
+            link_density: linkDensity,
+            status,
+            error: null,
+          });
+
+          if (status === 'needs_links') {
+            needsLinks++;
+          } else {
+            hasGoodDensity++;
+          }
+        } catch (err) {
+          pageResults.push({
+            url,
+            title: null,
+            word_count: 0,
+            internal_link_count: 0,
+            target_link_count: 0,
+            link_density: 0,
+            status: 'failed',
+            error: err instanceof Error ? err.message : 'Failed to analyze',
+          });
+          failed++;
+        }
+
+        setAnalysisProgress({ current: i + 1, total });
+      }
+
+      setResults(pageResults);
+      setSummary({
+        total_scanned: total,
+        needs_links: needsLinks,
+        has_good_density: hasGoodDensity,
+        failed,
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to refresh results');
     } finally {
       setLoading(false);
+      setAnalysisProgress({ current: 0, total: 0 });
     }
   };
 
@@ -415,8 +529,24 @@ function App() {
 
       {loading && step !== 'detail' && (
         <div className="loading-overlay">
-          <div className="spinner"></div>
-          <p>Analyzing pages... This may take a while.</p>
+          {analysisProgress.total > 0 ? (
+            <div className="progress-container">
+              <div className="progress-bar">
+                <div
+                  className="progress-fill"
+                  style={{ width: `${(analysisProgress.current / analysisProgress.total) * 100}%` }}
+                />
+              </div>
+              <p className="progress-text">
+                {analysisProgress.current} of {analysisProgress.total} pages analyzed
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="spinner"></div>
+              <p>Loading...</p>
+            </>
+          )}
         </div>
       )}
 
