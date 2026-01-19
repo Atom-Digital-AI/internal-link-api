@@ -42,6 +42,7 @@ export interface PageResult {
   link_density: number;
   status: 'good' | 'needs_links' | 'failed';
   error: string | null;
+  lastmod: string | null;
 }
 
 export interface BulkAnalyzeResponse {

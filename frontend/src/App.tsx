@@ -94,6 +94,7 @@ function App() {
     try {
       for (let i = 0; i < urls.length; i++) {
         const url = urls[i];
+        const pageInfo = sourcePages.find(p => p.url === url);
         try {
           const data = await analyzePage(url, targetPattern);
           const linkDensity = data.word_count > 0
@@ -112,6 +113,7 @@ function App() {
             link_density: linkDensity,
             status,
             error: null,
+            lastmod: pageInfo?.lastmod || null,
           });
 
           if (status === 'needs_links') {
@@ -129,12 +131,21 @@ function App() {
             link_density: 0,
             status: 'failed',
             error: err instanceof Error ? err.message : 'Failed to analyze',
+            lastmod: pageInfo?.lastmod || null,
           });
           failed++;
         }
 
         setAnalysisProgress({ current: i + 1, total });
       }
+
+      // Sort by lastmod date, newest first (nulls at end)
+      pageResults.sort((a, b) => {
+        if (!a.lastmod && !b.lastmod) return 0;
+        if (!a.lastmod) return 1;
+        if (!b.lastmod) return -1;
+        return new Date(b.lastmod).getTime() - new Date(a.lastmod).getTime();
+      });
 
       setResults(pageResults);
       setSummary({
@@ -252,6 +263,7 @@ function App() {
     try {
       for (let i = 0; i < urls.length; i++) {
         const url = urls[i];
+        const pageInfo = sourcePages.find(p => p.url === url);
         try {
           const data = await analyzePage(url, targetPattern);
           const linkDensity = data.word_count > 0
@@ -270,6 +282,7 @@ function App() {
             link_density: linkDensity,
             status,
             error: null,
+            lastmod: pageInfo?.lastmod || null,
           });
 
           if (status === 'needs_links') {
@@ -287,12 +300,21 @@ function App() {
             link_density: 0,
             status: 'failed',
             error: err instanceof Error ? err.message : 'Failed to analyze',
+            lastmod: pageInfo?.lastmod || null,
           });
           failed++;
         }
 
         setAnalysisProgress({ current: i + 1, total });
       }
+
+      // Sort by lastmod date, newest first (nulls at end)
+      pageResults.sort((a, b) => {
+        if (!a.lastmod && !b.lastmod) return 0;
+        if (!a.lastmod) return 1;
+        if (!b.lastmod) return -1;
+        return new Date(b.lastmod).getTime() - new Date(a.lastmod).getTime();
+      });
 
       setResults(pageResults);
       setSummary({
@@ -474,6 +496,7 @@ function App() {
             <thead>
               <tr>
                 <th>Page</th>
+                <th>Published</th>
                 <th>Words</th>
                 <th>Links</th>
                 <th>Target Links</th>
@@ -488,6 +511,7 @@ function App() {
                     <div className="title">{result.title || 'Untitled'}</div>
                     <div className="url">{result.url}</div>
                   </td>
+                  <td>{result.lastmod ? new Date(result.lastmod).toLocaleDateString() : '—'}</td>
                   <td>{result.word_count}</td>
                   <td>{result.internal_link_count}</td>
                   <td>{result.target_link_count}</td>
