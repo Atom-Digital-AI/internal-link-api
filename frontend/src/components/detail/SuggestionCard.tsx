@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { EnhancedSuggestion } from '../../types';
+import { Tooltip } from '../Tooltip';
 
 interface SuggestionCardProps {
   suggestion: EnhancedSuggestion;
@@ -9,6 +10,8 @@ interface SuggestionCardProps {
   onCopy: () => void;
   onHover: (hovering: boolean) => void;
   onClick: () => void;
+  onSave?: () => void;
+  isSaved?: boolean;
 }
 
 /**
@@ -21,7 +24,9 @@ export function SuggestionCard({
   onIgnore,
   onCopy,
   onHover,
-  onClick
+  onClick,
+  onSave,
+  isSaved = false
 }: SuggestionCardProps) {
   const [copied, setCopied] = useState(false);
 
@@ -40,6 +45,13 @@ export function SuggestionCard({
   const handleIgnore = (e: React.MouseEvent) => {
     e.stopPropagation();
     onIgnore();
+  };
+
+  const handleSave = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onSave && !isSaved) {
+      onSave();
+    }
   };
 
   // Build class names based on state
@@ -115,36 +127,55 @@ export function SuggestionCard({
 
       {/* Actions */}
       <div className="suggestion-card__actions">
-        <button
-          className="suggestion-card__btn suggestion-card__btn--copy"
-          onClick={handleCopy}
-          title="Copy HTML link code"
-        >
-          {copied ? 'Copied!' : 'Copy Code'}
-        </button>
+        <Tooltip content="Copy HTML link code to clipboard for pasting into your CMS." position="top">
+          <button
+            className="suggestion-card__btn suggestion-card__btn--copy"
+            onClick={handleCopy}
+          >
+            {copied ? 'Copied!' : 'Copy Code'}
+          </button>
+        </Tooltip>
+
+        {onSave && (
+          <Tooltip content={isSaved ? "Already saved to your links list." : "Add this suggestion to your Saved Links list."} position="top">
+            <button
+              className={`suggestion-card__btn suggestion-card__btn--save ${isSaved ? 'suggestion-card__btn--saved' : ''}`}
+              onClick={handleSave}
+              disabled={isSaved}
+            >
+              {isSaved ? 'Saved' : 'Save'}
+            </button>
+          </Tooltip>
+        )}
 
         {suggestion.status === 'pending' ? (
           <>
-            <button
-              className="suggestion-card__btn suggestion-card__btn--accept"
-              onClick={handleAccept}
-            >
-              Accept
-            </button>
-            <button
-              className="suggestion-card__btn suggestion-card__btn--ignore"
-              onClick={handleIgnore}
-            >
-              Ignore
-            </button>
+            <Tooltip content="Approve this suggestion. It will be highlighted green in the preview." position="top">
+              <button
+                className="suggestion-card__btn suggestion-card__btn--accept"
+                onClick={handleAccept}
+              >
+                Accept
+              </button>
+            </Tooltip>
+            <Tooltip content="Dismiss this suggestion. Can be reset later." position="top">
+              <button
+                className="suggestion-card__btn suggestion-card__btn--ignore"
+                onClick={handleIgnore}
+              >
+                Ignore
+              </button>
+            </Tooltip>
           </>
         ) : (
-          <button
-            className="suggestion-card__btn suggestion-card__btn--reset"
-            onClick={handleIgnore}
-          >
-            Reset
-          </button>
+          <Tooltip content="Undo your accept/ignore decision." position="top">
+            <button
+              className="suggestion-card__btn suggestion-card__btn--reset"
+              onClick={handleIgnore}
+            >
+              Reset
+            </button>
+          </Tooltip>
         )}
       </div>
     </div>

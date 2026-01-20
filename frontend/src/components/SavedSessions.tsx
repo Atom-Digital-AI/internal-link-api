@@ -1,4 +1,5 @@
 import type { SavedSessionsListProps } from '../types';
+import { Tooltip } from './Tooltip';
 
 export function SavedSessions({ sessions, onLoad, onDelete, onClose }: SavedSessionsListProps) {
   if (sessions.length === 0) {
@@ -40,19 +41,23 @@ export function SavedSessions({ sessions, onLoad, onDelete, onClose }: SavedSess
                 </div>
               </div>
               <div className="session-actions">
-                <button onClick={() => onLoad(session)} className="primary small">
-                  Load
-                </button>
-                <button
-                  onClick={() => {
-                    if (confirm('Delete this saved session?')) {
-                      onDelete(session.id);
-                    }
-                  }}
-                  className="small danger"
-                >
-                  Delete
-                </button>
+                <Tooltip content="Restore this saved session with all its analysis results." position="left">
+                  <button onClick={() => onLoad(session)} className="primary small">
+                    Load
+                  </button>
+                </Tooltip>
+                <Tooltip content="Permanently remove this saved session. This cannot be undone." position="left">
+                  <button
+                    onClick={() => {
+                      if (confirm('Delete this saved session?')) {
+                        onDelete(session.id);
+                      }
+                    }}
+                    className="small danger"
+                  >
+                    Delete
+                  </button>
+                </Tooltip>
               </div>
             </li>
           ))}

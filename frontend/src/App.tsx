@@ -10,6 +10,10 @@ import { getConfig, getSitemap, analyzePage } from './services/api';
 import { getSavedSessions, saveSession, deleteSession, createSession } from './services/storage';
 import { ContextualEditor } from './components/detail';
 import { SavedSessions } from './components/SavedSessions';
+import { SavedLinksPanel } from './components/SavedLinksPanel';
+import { GuideModal } from './components/GuideModal';
+import { getSavedLinks } from './services/storage';
+import { Tooltip, TooltipIcon } from './components/Tooltip';
 import './App.css';
 
 type Step = 'setup' | 'select' | 'results' | 'detail';
@@ -50,10 +54,25 @@ function App() {
   const [showSavedSessions, setShowSavedSessions] = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
 
+  // Saved links
+  const [showSavedLinks, setShowSavedLinks] = useState(false);
+  const [savedLinksCount, setSavedLinksCount] = useState(0);
+
+  // Guide modal
+  const [showGuide, setShowGuide] = useState(false);
+
   useEffect(() => {
     getConfig().then(setConfig).catch(console.error);
     setSavedSessions(getSavedSessions());
+    setSavedLinksCount(getSavedLinks().length);
   }, []);
+
+  // Update saved links count when modal closes (links may have changed)
+  useEffect(() => {
+    if (!showSavedLinks) {
+      setSavedLinksCount(getSavedLinks().length);
+    }
+  }, [showSavedLinks]);
 
   const handleFetchSitemap = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -339,14 +358,28 @@ function App() {
             <h1>Internal Link Finder</h1>
             <p>Find pages that need internal links and get AI-powered suggestions</p>
           </div>
-          {savedSessions.length > 0 && (
+          <div className="header-actions">
             <button
-              onClick={() => setShowSavedSessions(true)}
-              className="saved-sessions-btn"
+              onClick={() => setShowGuide(true)}
+              className="help-btn"
             >
-              Saved Sessions ({savedSessions.length})
+              ? Help
             </button>
-          )}
+            <button
+              onClick={() => setShowSavedLinks(true)}
+              className="saved-links-btn"
+            >
+              Saved Links {savedLinksCount > 0 && `(${savedLinksCount})`}
+            </button>
+            {savedSessions.length > 0 && (
+              <button
+                onClick={() => setShowSavedSessions(true)}
+                className="saved-sessions-btn"
+              >
+                Saved Sessions ({savedSessions.length})
+              </button>
+            )}
+          </div>
         </div>
       </header>
 
@@ -361,7 +394,13 @@ function App() {
         <section className="setup">
           <form onSubmit={handleFetchSitemap}>
             <div className="form-group">
-              <label htmlFor="domain">Website Domain</label>
+              <label htmlFor="domain" className="label-with-tooltip">
+                Website Domain
+                <TooltipIcon
+                  content="Enter the full URL of your website (e.g., https://example.com). The sitemap will be fetched to find pages for analysis."
+                  position="right"
+                />
+              </label>
               <input
                 id="domain"
                 type="url"
@@ -374,7 +413,13 @@ function App() {
 
             <div className="form-row">
               <div className="form-group">
-                <label htmlFor="source">Source Pattern (pages to analyze)</label>
+                <label htmlFor="source" className="label-with-tooltip">
+                  Source Pattern (pages to analyze)
+                  <TooltipIcon
+                    content="URL pattern to identify pages to analyze for missing internal links. Example: '/blog/' matches all blog posts. Leave empty to include all pages."
+                    position="right"
+                  />
+                </label>
                 <input
                   id="source"
                   type="text"
@@ -385,7 +430,13 @@ function App() {
               </div>
 
               <div className="form-group">
-                <label htmlFor="target">Target Pattern (pages to link to)</label>
+                <label htmlFor="target" className="label-with-tooltip">
+                  Target Pattern (pages to link to)
+                  <TooltipIcon
+                    content="URL pattern for pages you want to link TO. Example: '/services/' will suggest links from blog posts to service pages."
+                    position="right"
+                  />
+                </label>
                 <input
                   id="target"
                   type="text"
@@ -412,8 +463,12 @@ function App() {
               {config && ` (max ${config.max_bulk_urls} at a time)`}
             </p>
             <div className="select-actions">
-              <button onClick={selectAll}>Select All</button>
-              <button onClick={selectNone}>Select None</button>
+              <Tooltip content="Select all available source pages (up to the maximum limit)." position="bottom">
+                <button onClick={selectAll}>Select All</button>
+              </Tooltip>
+              <Tooltip content="Deselect all pages to start fresh." position="bottom">
+                <button onClick={selectNone}>Select None</button>
+              </Tooltip>
               <span className="selected-count">{selectedUrls.size} selected</span>
             </div>
           </div>
@@ -436,13 +491,15 @@ function App() {
 
           <div className="actions">
             <button onClick={() => setStep('setup')}>Back</button>
-            <button
-              onClick={handleAnalyze}
-              disabled={loading || selectedUrls.size === 0}
-              className="primary"
-            >
-              {loading ? 'Analyzing...' : `Analyze ${selectedUrls.size} Pages`}
-            </button>
+            <Tooltip content="Scan selected pages for content and existing links. Pages with low link density will be flagged." position="top">
+              <button
+                onClick={handleAnalyze}
+                disabled={loading || selectedUrls.size === 0}
+                className="primary"
+              >
+                {loading ? 'Analyzing...' : `Analyze ${selectedUrls.size} Pages`}
+              </button>
+            </Tooltip>
           </div>
         </section>
       )}
@@ -453,21 +510,23 @@ function App() {
             <div className="results-title-row">
               <h2>Analysis Results</h2>
               <div className="results-actions-top">
-                <button
-                  onClick={handleRefreshResults}
-                  disabled={loading}
-                  className="refresh-btn"
-                  title="Re-analyze all pages with fresh data"
-                >
-                  {loading ? 'Refreshing...' : '↻ Refresh'}
-                </button>
-                <button
-                  onClick={handleSaveSession}
-                  className="save-btn"
-                  title={currentSessionId ? 'Update saved session' : 'Save session for later'}
-                >
-                  {currentSessionId ? '✓ Update Saved' : '💾 Save'}
-                </button>
+                <Tooltip content="Re-analyze all pages with fresh data from your website." position="bottom">
+                  <button
+                    onClick={handleRefreshResults}
+                    disabled={loading}
+                    className="refresh-btn"
+                  >
+                    {loading ? 'Refreshing...' : '↻ Refresh'}
+                  </button>
+                </Tooltip>
+                <Tooltip content="Save this analysis session to your browser for later access." position="bottom">
+                  <button
+                    onClick={handleSaveSession}
+                    className="save-btn"
+                  >
+                    {currentSessionId ? '✓ Update Saved' : '💾 Save'}
+                  </button>
+                </Tooltip>
               </div>
             </div>
             {summary && (
@@ -580,6 +639,18 @@ function App() {
           onLoad={handleLoadSession}
           onDelete={handleDeleteSession}
           onClose={() => setShowSavedSessions(false)}
+        />
+      )}
+
+      {showSavedLinks && (
+        <SavedLinksPanel
+          onClose={() => setShowSavedLinks(false)}
+        />
+      )}
+
+      {showGuide && (
+        <GuideModal
+          onClose={() => setShowGuide(false)}
         />
       )}
     </div>

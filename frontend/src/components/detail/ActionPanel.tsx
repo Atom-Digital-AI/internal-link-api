@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState } from 'react';
 import type { EnhancedSuggestion, LinkInfo } from '../../types';
 import { SuggestionCard } from './SuggestionCard';
+import { Tooltip } from '../Tooltip';
 
 interface ActionPanelProps {
   suggestions: EnhancedSuggestion[];
@@ -18,6 +19,9 @@ interface ActionPanelProps {
   scrollToCardId: string | null;
   showExistingLinks?: boolean;
   onShowExistingLinksChange?: (show: boolean) => void;
+  onSaveLink?: (suggestion: EnhancedSuggestion) => void;
+  isLinkSaved?: (targetUrl: string, anchorText: string) => boolean;
+  sourceUrl?: string;
 }
 
 /**
@@ -38,7 +42,10 @@ export function ActionPanel({
   onGetSuggestions,
   scrollToCardId,
   showExistingLinks,
-  onShowExistingLinksChange
+  onShowExistingLinksChange,
+  onSaveLink,
+  isLinkSaved,
+  sourceUrl
 }: ActionPanelProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const existingLinksRef = useRef<HTMLDivElement>(null);
@@ -105,13 +112,15 @@ export function ActionPanel({
               </span>
             )}
           </h3>
-          <button
-            className="action-panel__refresh"
-            onClick={onGetSuggestions}
-            disabled={isLoading}
-          >
-            {isLoading ? 'Analyzing...' : 'Get AI Suggestions'}
-          </button>
+          <Tooltip content="Use AI to analyze this page and find natural opportunities for internal links." position="left">
+            <button
+              className="action-panel__refresh"
+              onClick={onGetSuggestions}
+              disabled={isLoading}
+            >
+              {isLoading ? 'Analyzing...' : 'Get AI Suggestions'}
+            </button>
+          </Tooltip>
         </div>
 
         {isLoading && (
@@ -141,6 +150,8 @@ export function ActionPanel({
                 onCopy={() => handleCopy(suggestion)}
                 onHover={(hovering) => onCardHover(hovering ? suggestion.id : null)}
                 onClick={() => onCardClick(suggestion.id)}
+                onSave={onSaveLink ? () => onSaveLink(suggestion) : undefined}
+                isSaved={isLinkSaved && sourceUrl ? isLinkSaved(suggestion.targetUrl, suggestion.anchorText) : false}
               />
             ))}
           </div>
@@ -163,6 +174,8 @@ export function ActionPanel({
                   onCopy={() => handleCopy(suggestion)}
                   onHover={(hovering) => onCardHover(hovering ? suggestion.id : null)}
                   onClick={() => onCardClick(suggestion.id)}
+                  onSave={onSaveLink ? () => onSaveLink(suggestion) : undefined}
+                  isSaved={isLinkSaved && sourceUrl ? isLinkSaved(suggestion.targetUrl, suggestion.anchorText) : false}
                 />
               ))}
             </div>
@@ -181,15 +194,17 @@ export function ActionPanel({
 
       {/* Existing Links Section */}
       <div className="action-panel__section" ref={existingLinksRef}>
-        <button
-          className="action-panel__section-toggle"
-          onClick={() => setShowExisting(!showExisting)}
-        >
-          <span>Existing Internal Links ({existingLinks.length})</span>
-          <span className="action-panel__toggle-icon">
-            {showExisting ? '−' : '+'}
-          </span>
-        </button>
+        <Tooltip content="View all internal links currently on this page." position="left">
+          <button
+            className="action-panel__section-toggle"
+            onClick={() => setShowExisting(!showExisting)}
+          >
+            <span>Existing Internal Links ({existingLinks.length})</span>
+            <span className="action-panel__toggle-icon">
+              {showExisting ? '−' : '+'}
+            </span>
+          </button>
+        </Tooltip>
 
         {showExisting && (
           <div className="action-panel__existing-links">

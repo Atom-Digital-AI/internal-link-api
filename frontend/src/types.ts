@@ -176,3 +176,21 @@ export interface SavedSessionsListProps {
   onDelete: (id: string) => void;
   onClose: () => void;
 }
+
+// Saved link types for persistent link list
+export interface SavedLink {
+  id: string;                    // Unique ID
+  savedAt: string;               // ISO timestamp
+  sourceUrl: string;             // Page where link should be added
+  sourceTitle: string | null;    // Title of source page
+  targetUrl: string;             // Page to link to
+  anchorText: string;            // Text to make into link
+  reason: string;                // AI reasoning
+  sentence: string;              // Context sentence (position indicator)
+  domain: string;                // Extracted hostname for filtering
+  isImplemented: boolean;        // Track if user added the link
+}
+
+export interface SavedLinksPanelProps {
+  onClose: () => void;
+}

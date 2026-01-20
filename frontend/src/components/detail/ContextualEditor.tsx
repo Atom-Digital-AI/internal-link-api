@@ -1,7 +1,8 @@
 import { useState, useCallback, useEffect } from 'react';
-import type { AnalyzeResponse, PageInfo, LinkSuggestion } from '../../types';
+import type { AnalyzeResponse, PageInfo, LinkSuggestion, EnhancedSuggestion } from '../../types';
 import { useTextHighlighter } from '../../hooks/useTextHighlighter';
 import { useSuggestionState } from '../../hooks/useSuggestionState';
+import { useSavedLinks } from '../../hooks/useSavedLinks';
 import { DetailHeader } from './DetailHeader';
 import { ArticlePreview } from './ArticlePreview';
 import { ActionPanel } from './ActionPanel';
@@ -34,6 +35,9 @@ export function ContextualEditor({
 
   // Control existing links section visibility from parent
   const [showExistingLinks, setShowExistingLinks] = useState(false);
+
+  // Saved links functionality
+  const { saveLink, isLinkSaved } = useSavedLinks();
 
   // Compute highlight positions from content, suggestions, and existing links
   const { highlights, unmatchedSuggestions } = useTextHighlighter(
@@ -137,6 +141,23 @@ export function ContextualEditor({
     }
   }, []);
 
+  // Handle save link to saved links list
+  const handleSaveLink = useCallback((suggestion: EnhancedSuggestion) => {
+    saveLink({
+      sourceUrl: pageData.url,
+      sourceTitle: pageData.title,
+      targetUrl: suggestion.targetUrl,
+      anchorText: suggestion.anchorText,
+      reason: suggestion.reason,
+      sentence: suggestion.sentence,
+    });
+  }, [pageData.url, pageData.title, saveLink]);
+
+  // Check if a link is already saved (curried for ActionPanel)
+  const checkIsLinkSaved = useCallback((targetUrl: string, anchorText: string) => {
+    return isLinkSaved(pageData.url, targetUrl, anchorText);
+  }, [pageData.url, isLinkSaved]);
+
   // Stats for header
   const stats = {
     wordCount: pageData.word_count,
@@ -192,6 +213,9 @@ export function ContextualEditor({
           scrollToCardId={scrollToCardId}
           showExistingLinks={showExistingLinks}
           onShowExistingLinksChange={setShowExistingLinks}
+          onSaveLink={handleSaveLink}
+          isLinkSaved={checkIsLinkSaved}
+          sourceUrl={pageData.url}
         />
       </div>
     </div>
