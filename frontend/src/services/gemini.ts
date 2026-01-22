@@ -1,4 +1,4 @@
-import type { PageInfo, AnalyzeResponse, LinkSuggestion } from '../types';
+import type { PageInfo, AnalyzeResponse, LinkSuggestion, MatchType } from '../types';
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 const GEMINI_MODEL = import.meta.env.VITE_GEMINI_MODEL || 'gemini-1.5-flash';
@@ -13,13 +13,58 @@ interface GeminiResponse {
   }>;
 }
 
+/**
+ * Build the filter instruction for the AI prompt based on active filters
+ */
+function buildFilterInstruction(
+  filterTargetUrl?: string,
+  filterKeyword?: string,
+  filterMatchType?: MatchType
+): string {
+  const instructions: string[] = [];
+
+  if (filterTargetUrl && filterKeyword) {
+    // Both filters active
+    const matchDesc = filterMatchType === 'exact'
+      ? 'using exactly the keyword'
+      : 'using the keyword or closely related terms';
+    instructions.push(`**IMPORTANT FILTER:** Focus specifically on finding opportunities to link to ${filterTargetUrl} ${matchDesc} "${filterKeyword}" as anchor text.`);
+  } else if (filterTargetUrl) {
+    // Only target URL filter
+    instructions.push(`**IMPORTANT FILTER:** Focus specifically on finding opportunities to link to this target page: ${filterTargetUrl}`);
+    instructions.push('All suggestions MUST link to this specific URL.');
+  } else if (filterKeyword) {
+    // Only keyword filter
+    const matchDesc = filterMatchType === 'exact'
+      ? 'the exact keyword'
+      : 'the keyword or semantically related terms';
+    instructions.push(`**IMPORTANT FILTER:** Focus on finding opportunities to use "${filterKeyword}" or related terms as anchor text.`);
+    instructions.push(`Look for places where ${matchDesc} appears naturally in the content and could link to a relevant target page.`);
+  }
+
+  return instructions.length > 0
+    ? '\n\n' + instructions.join('\n')
+    : '';
+}
+
 export async function getInternalLinkSuggestions(
   pageData: AnalyzeResponse,
-  targetPages: PageInfo[]
+  targetPages: PageInfo[],
+  filterTargetUrl?: string,
+  filterKeyword?: string,
+  filterMatchType?: MatchType
 ): Promise<LinkSuggestion[]> {
   if (!GEMINI_API_KEY) {
     throw new Error('Gemini API key not configured. Set VITE_GEMINI_API_KEY environment variable.');
   }
+
+  // Build filter-specific instructions
+  const filterInstruction = buildFilterInstruction(filterTargetUrl, filterKeyword, filterMatchType);
+
+  // Determine which target pages to show
+  const pagesToShow = filterTargetUrl
+    ? targetPages.filter(p => p.url === filterTargetUrl)
+    : targetPages.slice(0, 20);
 
   const prompt = `You are an SEO expert. Analyze this blog post and suggest internal linking opportunities.
 
@@ -28,14 +73,15 @@ export async function getInternalLinkSuggestions(
 **Word Count:** ${pageData.word_count}
 **Current Internal Links:** ${pageData.internal_links.total}
 **Links to Target Pages:** ${pageData.internal_links.to_target_pages}
+${filterInstruction}
 
 **Target Pages Available to Link To:**
-${targetPages.slice(0, 20).map(p => `- ${p.url}`).join('\n')}
+${pagesToShow.map(p => `- ${p.url}`).join('\n')}
 
 **Article Content:**
 ${pageData.extracted_content.slice(0, 8000)}
 
-Suggest 3-5 specific places in the content where internal links to target pages would be natural and valuable for SEO.
+Suggest 3-5 specific places in the content where internal links to target pages would be natural and valuable for SEO.${filterKeyword ? ` Prioritize opportunities that use "${filterKeyword}" or related terms as anchor text.` : ''}
 
 IMPORTANT: Respond ONLY with valid JSON in this exact format, no other text:
 {

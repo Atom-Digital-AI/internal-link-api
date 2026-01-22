@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState } from 'react';
-import type { EnhancedSuggestion, LinkInfo } from '../../types';
+import type { EnhancedSuggestion, LinkInfo, PageInfo, MatchType } from '../../types';
 import { SuggestionCard } from './SuggestionCard';
+import { FilterOptions } from './FilterOptions';
 import { Tooltip } from '../Tooltip';
 
 interface ActionPanelProps {
@@ -22,6 +23,15 @@ interface ActionPanelProps {
   onSaveLink?: (suggestion: EnhancedSuggestion) => void;
   isLinkSaved?: (targetUrl: string, anchorText: string) => boolean;
   sourceUrl?: string;
+  // Filter options
+  targetPages?: PageInfo[];
+  filterTargetUrl?: string;
+  filterKeyword?: string;
+  filterMatchType?: MatchType;
+  onFilterTargetUrlChange?: (url: string) => void;
+  onFilterKeywordChange?: (keyword: string) => void;
+  onFilterMatchTypeChange?: (matchType: MatchType) => void;
+  onFilterClear?: () => void;
 }
 
 /**
@@ -45,7 +55,15 @@ export function ActionPanel({
   onShowExistingLinksChange,
   onSaveLink,
   isLinkSaved,
-  sourceUrl
+  sourceUrl,
+  targetPages,
+  filterTargetUrl,
+  filterKeyword,
+  filterMatchType,
+  onFilterTargetUrlChange,
+  onFilterKeywordChange,
+  onFilterMatchTypeChange,
+  onFilterClear,
 }: ActionPanelProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const existingLinksRef = useRef<HTMLDivElement>(null);
@@ -101,6 +119,20 @@ export function ActionPanel({
 
   return (
     <div className="action-panel" ref={containerRef}>
+      {/* Filter Options */}
+      {targetPages && onFilterTargetUrlChange && onFilterKeywordChange && onFilterMatchTypeChange && onFilterClear && (
+        <FilterOptions
+          targetPages={targetPages}
+          filterTargetUrl={filterTargetUrl || ''}
+          filterKeyword={filterKeyword || ''}
+          filterMatchType={filterMatchType || 'stemmed'}
+          onFilterTargetUrlChange={onFilterTargetUrlChange}
+          onFilterKeywordChange={onFilterKeywordChange}
+          onFilterMatchTypeChange={onFilterMatchTypeChange}
+          onClear={onFilterClear}
+        />
+      )}
+
       {/* Suggestions Section */}
       <div className="action-panel__section">
         <div className="action-panel__section-header">

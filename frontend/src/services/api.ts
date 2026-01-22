@@ -3,6 +3,8 @@ import type {
   SitemapResponse,
   AnalyzeResponse,
   BulkAnalyzeResponse,
+  FilterOptions,
+  TargetPageInfo,
 } from '../types';
 
 // Use relative URLs in production (same origin), absolute URL for local dev
@@ -60,7 +62,8 @@ export async function analyzePage(
 export async function bulkAnalyze(
   urls: string[],
   targetPattern: string,
-  linkRatioThreshold: number = 500
+  linkRatioThreshold: number = 500,
+  filterOptions?: FilterOptions
 ): Promise<BulkAnalyzeResponse> {
   return fetchJson<BulkAnalyzeResponse>(`${API_BASE}/bulk-analyze`, {
     method: 'POST',
@@ -68,6 +71,17 @@ export async function bulkAnalyze(
       urls,
       target_pattern: targetPattern,
       link_ratio_threshold: linkRatioThreshold,
+      // Include filter options if provided
+      ...(filterOptions?.targetUrl && { filter_target_url: filterOptions.targetUrl }),
+      ...(filterOptions?.keyword && { filter_keyword: filterOptions.keyword }),
+      ...(filterOptions && { filter_match_type: filterOptions.matchType }),
     }),
+  });
+}
+
+export async function fetchTargetPage(url: string): Promise<TargetPageInfo> {
+  return fetchJson<TargetPageInfo>(`${API_BASE}/fetch-target`, {
+    method: 'POST',
+    body: JSON.stringify({ url }),
   });
 }

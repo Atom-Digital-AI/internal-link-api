@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import type { AnalyzeResponse, PageInfo, LinkSuggestion, EnhancedSuggestion } from '../../types';
+import type { AnalyzeResponse, PageInfo, LinkSuggestion, EnhancedSuggestion, MatchType } from '../../types';
 import { useTextHighlighter } from '../../hooks/useTextHighlighter';
 import { useSuggestionState } from '../../hooks/useSuggestionState';
 import { useSavedLinks } from '../../hooks/useSavedLinks';
@@ -36,6 +36,11 @@ export function ContextualEditor({
   // Control existing links section visibility from parent
   const [showExistingLinks, setShowExistingLinks] = useState(false);
 
+  // Filter options for focused suggestions
+  const [filterTargetUrl, setFilterTargetUrl] = useState('');
+  const [filterKeyword, setFilterKeyword] = useState('');
+  const [filterMatchType, setFilterMatchType] = useState<MatchType>('stemmed');
+
   // Saved links functionality
   const { saveLink, isLinkSaved } = useSavedLinks();
 
@@ -69,7 +74,13 @@ export function ContextualEditor({
     setSuggestionsError(null);
 
     try {
-      const result = await getInternalLinkSuggestions(pageData, targetPages);
+      const result = await getInternalLinkSuggestions(
+        pageData,
+        targetPages,
+        filterTargetUrl || undefined,
+        filterKeyword || undefined,
+        filterMatchType
+      );
       setSuggestions(result);
     } catch (error) {
       console.error('Failed to get suggestions:', error);
@@ -77,7 +88,14 @@ export function ContextualEditor({
     } finally {
       setIsLoadingSuggestions(false);
     }
-  }, [pageData, targetPages]);
+  }, [pageData, targetPages, filterTargetUrl, filterKeyword, filterMatchType]);
+
+  // Clear filters
+  const handleClearFilters = useCallback(() => {
+    setFilterTargetUrl('');
+    setFilterKeyword('');
+    setFilterMatchType('stemmed');
+  }, []);
 
   // Handle highlight click - scroll to corresponding card
   const handleHighlightClick = useCallback((id: string) => {
@@ -216,6 +234,14 @@ export function ContextualEditor({
           onSaveLink={handleSaveLink}
           isLinkSaved={checkIsLinkSaved}
           sourceUrl={pageData.url}
+          targetPages={targetPages}
+          filterTargetUrl={filterTargetUrl}
+          filterKeyword={filterKeyword}
+          filterMatchType={filterMatchType}
+          onFilterTargetUrlChange={setFilterTargetUrl}
+          onFilterKeywordChange={setFilterKeyword}
+          onFilterMatchTypeChange={setFilterMatchType}
+          onFilterClear={handleClearFilters}
         />
       </div>
     </div>
