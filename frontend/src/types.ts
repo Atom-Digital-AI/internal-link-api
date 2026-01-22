@@ -43,6 +43,23 @@ export interface PageResult {
   status: 'good' | 'needs_links' | 'failed';
   error: string | null;
   lastmod: string | null;
+  keyword_relevance: number | null;  // 0-5 relevance score when filter is active
+}
+
+// Filter options for focused search
+export type MatchType = 'exact' | 'stemmed';
+
+export interface FilterOptions {
+  targetUrl: string | null;  // Specific page to build links to
+  keyword: string | null;    // Keyword to focus on
+  matchType: MatchType;      // Match type for keyword
+}
+
+// Target page info returned from API
+export interface TargetPageInfo {
+  url: string;
+  title: string | null;
+  keywords: string[];
 }
 
 export interface BulkAnalyzeResponse {
@@ -53,6 +70,7 @@ export interface BulkAnalyzeResponse {
     has_good_density: number;
     failed: number;
   };
+  target_page_info: TargetPageInfo | null;  // Info about the target page when filter is active
 }
 
 export interface ConfigResponse {
@@ -168,6 +186,9 @@ export interface SavedSession {
     has_good_density: number;
     failed: number;
   };
+  // Filter options (optional for backwards compatibility)
+  filterOptions?: FilterOptions;
+  targetPageInfo?: TargetPageInfo;
 }
 
 export interface SavedSessionsListProps {

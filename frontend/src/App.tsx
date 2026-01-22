@@ -5,8 +5,11 @@ import type {
   AnalyzeResponse,
   ConfigResponse,
   SavedSession,
+  TargetPageInfo,
+  MatchType,
 } from './types';
-import { getConfig, getSitemap, analyzePage } from './services/api';
+import { getConfig, getSitemap, analyzePage, fetchTargetPage } from './services/api';
+import { calculateKeywordRelevance, buildKeywordList } from './utils/keywordRelevance';
 import { getSavedSessions, saveSession, deleteSession, createSession } from './services/storage';
 import { ContextualEditor } from './components/detail';
 import { SavedSessions } from './components/SavedSessions';
@@ -28,6 +31,12 @@ function App() {
   const [domain, setDomain] = useState('');
   const [sourcePattern, setSourcePattern] = useState('/blog/');
   const [targetPattern, setTargetPattern] = useState('/services/');
+
+  // Filter options for focused search
+  const [filterTargetUrl, setFilterTargetUrl] = useState('');
+  const [filterKeyword, setFilterKeyword] = useState('');
+  const [filterMatchType, setFilterMatchType] = useState<MatchType>('stemmed');
+  const [targetPageInfo, setTargetPageInfo] = useState<TargetPageInfo | null>(null);
 
   // Sitemap data
   const [sourcePages, setSourcePages] = useState<PageInfo[]>([]);
@@ -105,6 +114,23 @@ function App() {
     const total = urls.length;
     setAnalysisProgress({ current: 0, total });
 
+    // Fetch target page info if filter is active
+    let fetchedTargetInfo: TargetPageInfo | null = null;
+    let keywords: string[] = [];
+
+    if (filterTargetUrl) {
+      try {
+        fetchedTargetInfo = await fetchTargetPage(filterTargetUrl);
+        setTargetPageInfo(fetchedTargetInfo);
+        keywords = buildKeywordList(fetchedTargetInfo.keywords, filterKeyword || null);
+      } catch (err) {
+        console.error('Failed to fetch target page:', err);
+        // Continue without target page info
+      }
+    } else if (filterKeyword) {
+      keywords = buildKeywordList([], filterKeyword);
+    }
+
     const pageResults: PageResult[] = [];
     let needsLinks = 0;
     let hasGoodDensity = 0;
@@ -123,6 +149,11 @@ function App() {
             ? 'needs_links'
             : 'good';
 
+          // Calculate keyword relevance if filters are active
+          const keywordRelevance = keywords.length > 0
+            ? calculateKeywordRelevance(data.extracted_content, keywords, filterMatchType)
+            : null;
+
           pageResults.push({
             url: data.url,
             title: data.title,
@@ -133,6 +164,7 @@ function App() {
             status,
             error: null,
             lastmod: pageInfo?.lastmod || null,
+            keyword_relevance: keywordRelevance,
           });
 
           if (status === 'needs_links') {
@@ -151,6 +183,7 @@ function App() {
             status: 'failed',
             error: err instanceof Error ? err.message : 'Failed to analyze',
             lastmod: pageInfo?.lastmod || null,
+            keyword_relevance: null,
           });
           failed++;
         }
@@ -158,8 +191,17 @@ function App() {
         setAnalysisProgress({ current: i + 1, total });
       }
 
-      // Sort by lastmod date, newest first (nulls at end)
+      // Sort by relevance (if active) then by lastmod date
       pageResults.sort((a, b) => {
+        // If relevance is active, sort by relevance first (highest first)
+        if (keywords.length > 0) {
+          const relA = a.keyword_relevance ?? -1;
+          const relB = b.keyword_relevance ?? -1;
+          if (relA !== relB) {
+            return relB - relA;
+          }
+        }
+        // Then by lastmod date, newest first (nulls at end)
         if (!a.lastmod && !b.lastmod) return 0;
         if (!a.lastmod) return 1;
         if (!b.lastmod) return -1;
@@ -274,6 +316,22 @@ function App() {
     const total = urls.length;
     setAnalysisProgress({ current: 0, total });
 
+    // Use existing target page info or fetch if filter is active
+    let keywords: string[] = [];
+    if (targetPageInfo) {
+      keywords = buildKeywordList(targetPageInfo.keywords, filterKeyword || null);
+    } else if (filterTargetUrl) {
+      try {
+        const fetchedTargetInfo = await fetchTargetPage(filterTargetUrl);
+        setTargetPageInfo(fetchedTargetInfo);
+        keywords = buildKeywordList(fetchedTargetInfo.keywords, filterKeyword || null);
+      } catch (err) {
+        console.error('Failed to fetch target page:', err);
+      }
+    } else if (filterKeyword) {
+      keywords = buildKeywordList([], filterKeyword);
+    }
+
     const pageResults: PageResult[] = [];
     let needsLinks = 0;
     let hasGoodDensity = 0;
@@ -292,6 +350,11 @@ function App() {
             ? 'needs_links'
             : 'good';
 
+          // Calculate keyword relevance if filters are active
+          const keywordRelevance = keywords.length > 0
+            ? calculateKeywordRelevance(data.extracted_content, keywords, filterMatchType)
+            : null;
+
           pageResults.push({
             url: data.url,
             title: data.title,
@@ -302,6 +365,7 @@ function App() {
             status,
             error: null,
             lastmod: pageInfo?.lastmod || null,
+            keyword_relevance: keywordRelevance,
           });
 
           if (status === 'needs_links') {
@@ -320,6 +384,7 @@ function App() {
             status: 'failed',
             error: err instanceof Error ? err.message : 'Failed to analyze',
             lastmod: pageInfo?.lastmod || null,
+            keyword_relevance: null,
           });
           failed++;
         }
@@ -327,8 +392,17 @@ function App() {
         setAnalysisProgress({ current: i + 1, total });
       }
 
-      // Sort by lastmod date, newest first (nulls at end)
+      // Sort by relevance (if active) then by lastmod date
       pageResults.sort((a, b) => {
+        // If relevance is active, sort by relevance first (highest first)
+        if (keywords.length > 0) {
+          const relA = a.keyword_relevance ?? -1;
+          const relB = b.keyword_relevance ?? -1;
+          if (relA !== relB) {
+            return relB - relA;
+          }
+        }
+        // Then by lastmod date, newest first (nulls at end)
         if (!a.lastmod && !b.lastmod) return 0;
         if (!a.lastmod) return 1;
         if (!b.lastmod) return -1;
@@ -447,6 +521,98 @@ function App() {
               </div>
             </div>
 
+            <div className="filter-section">
+              <h3 className="filter-section__title">
+                Focus Your Search (Optional)
+                <TooltipIcon
+                  content="Optionally focus your search on building links to a specific page or for a specific keyword. Leave empty to find all opportunities."
+                  position="right"
+                />
+              </h3>
+
+              <div className="form-group">
+                <label htmlFor="filterTargetUrl" className="label-with-tooltip">
+                  Target Page URL
+                  <TooltipIcon
+                    content="Enter a specific URL you want to build internal links TO. The tool will analyze source pages for relevance to this target."
+                    position="right"
+                  />
+                </label>
+                <input
+                  id="filterTargetUrl"
+                  type="url"
+                  placeholder="https://example.com/important-page"
+                  value={filterTargetUrl}
+                  onChange={e => setFilterTargetUrl(e.target.value)}
+                />
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="filterKeyword" className="label-with-tooltip">
+                    Keyword
+                    <TooltipIcon
+                      content="Enter a keyword or phrase to focus on. Pages with content related to this keyword will be ranked higher."
+                      position="right"
+                    />
+                  </label>
+                  <input
+                    id="filterKeyword"
+                    type="text"
+                    placeholder="e.g., SEO audit"
+                    value={filterKeyword}
+                    onChange={e => setFilterKeyword(e.target.value)}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="label-with-tooltip">
+                    Match Type
+                    <TooltipIcon
+                      content="Exact: matches the keyword exactly. Stemmed: matches variations (e.g., 'audit' matches 'audits', 'auditing')."
+                      position="right"
+                    />
+                  </label>
+                  <div className="radio-group">
+                    <label className="radio-label">
+                      <input
+                        type="radio"
+                        name="matchType"
+                        value="stemmed"
+                        checked={filterMatchType === 'stemmed'}
+                        onChange={() => setFilterMatchType('stemmed')}
+                      />
+                      Stemmed (Recommended)
+                    </label>
+                    <label className="radio-label">
+                      <input
+                        type="radio"
+                        name="matchType"
+                        value="exact"
+                        checked={filterMatchType === 'exact'}
+                        onChange={() => setFilterMatchType('exact')}
+                      />
+                      Exact
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {(filterTargetUrl || filterKeyword) && (
+                <button
+                  type="button"
+                  className="clear-filters-btn"
+                  onClick={() => {
+                    setFilterTargetUrl('');
+                    setFilterKeyword('');
+                    setFilterMatchType('stemmed');
+                  }}
+                >
+                  Clear Filters
+                </button>
+              )}
+            </div>
+
             <button type="submit" disabled={loading} className="primary">
               {loading ? 'Fetching Sitemap...' : 'Fetch Sitemap'}
             </button>
@@ -529,6 +695,35 @@ function App() {
                 </Tooltip>
               </div>
             </div>
+
+            {/* Filter banner */}
+            {(filterTargetUrl || filterKeyword) && (
+              <div className="filter-banner">
+                <span className="filter-banner__label">Focused Search:</span>
+                {filterTargetUrl && (
+                  <span className="filter-banner__item">
+                    <strong>Target:</strong> {targetPageInfo?.title || filterTargetUrl}
+                  </span>
+                )}
+                {filterKeyword && (
+                  <span className="filter-banner__item">
+                    <strong>Keyword:</strong> "{filterKeyword}" ({filterMatchType})
+                  </span>
+                )}
+                <button
+                  className="filter-banner__clear"
+                  onClick={() => {
+                    setFilterTargetUrl('');
+                    setFilterKeyword('');
+                    setFilterMatchType('stemmed');
+                    setTargetPageInfo(null);
+                  }}
+                >
+                  Clear
+                </button>
+              </div>
+            )}
+
             {summary && (
               <div className="summary">
                 <div className="stat">
@@ -556,6 +751,7 @@ function App() {
               <tr>
                 <th>Page</th>
                 <th>Published</th>
+                {(filterTargetUrl || filterKeyword) && <th>Relevance</th>}
                 <th>Words</th>
                 <th>Links</th>
                 <th>Target Links</th>
@@ -571,6 +767,27 @@ function App() {
                     <div className="url">{result.url}</div>
                   </td>
                   <td>{result.lastmod ? new Date(result.lastmod).toLocaleDateString() : '—'}</td>
+                  {(filterTargetUrl || filterKeyword) && (
+                    <td className="relevance-cell">
+                      {result.keyword_relevance !== null ? (
+                        <div className="relevance-indicator">
+                          <div className="relevance-dots">
+                            {[1, 2, 3, 4, 5].map(i => (
+                              <span
+                                key={i}
+                                className={`relevance-dot ${i <= result.keyword_relevance! ? 'active' : ''}`}
+                              />
+                            ))}
+                          </div>
+                          <span className="relevance-label">
+                            {result.keyword_relevance === 0 ? 'None' :
+                             result.keyword_relevance <= 2 ? 'Low' :
+                             result.keyword_relevance <= 3 ? 'Medium' : 'High'}
+                          </span>
+                        </div>
+                      ) : '—'}
+                    </td>
+                  )}
                   <td>{result.word_count}</td>
                   <td>{result.internal_link_count}</td>
                   <td>{result.target_link_count}</td>

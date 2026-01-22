@@ -4,3 +4,4 @@ export { ArticlePreview } from './ArticlePreview';
 export { ActionPanel } from './ActionPanel';
 export { SuggestionCard } from './SuggestionCard';
 export { HighlightedContent } from './HighlightedContent';
+export { FilterOptions } from './FilterOptions';

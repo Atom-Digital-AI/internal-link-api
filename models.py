@@ -1,5 +1,5 @@
 from pydantic import BaseModel, HttpUrl
-from typing import Optional
+from typing import Optional, Literal
 
 
 # Sitemap models
@@ -7,6 +7,13 @@ class SitemapRequest(BaseModel):
     domain: HttpUrl
     source_pattern: str = "/blog/"
     target_pattern: str = "/services/"
+
+
+# Filter options for focused search
+class FilterOptions(BaseModel):
+    target_url: Optional[str] = None  # Specific page to build links to
+    keyword: Optional[str] = None  # Keyword to focus on
+    match_type: Literal["exact", "stemmed"] = "stemmed"  # Match type for keyword
 
 
 class PageInfo(BaseModel):
@@ -56,6 +63,10 @@ class BulkAnalyzeRequest(BaseModel):
     urls: list[HttpUrl]
     target_pattern: str = "/services/"
     link_ratio_threshold: int = 500
+    # Filter options for focused search
+    filter_target_url: Optional[str] = None  # Specific page to build links to
+    filter_keyword: Optional[str] = None  # Keyword to focus on
+    filter_match_type: Literal["exact", "stemmed"] = "stemmed"  # Match type
 
 
 class PageResult(BaseModel):
@@ -67,6 +78,7 @@ class PageResult(BaseModel):
     link_density: float = 0.0
     status: str = "ok"
     error: Optional[str] = None
+    keyword_relevance: Optional[int] = None  # 0-5 relevance score when filter is active
 
 
 class BulkSummary(BaseModel):
@@ -76,9 +88,21 @@ class BulkSummary(BaseModel):
     failed: int
 
 
+# Target page info for focused search
+class FetchTargetRequest(BaseModel):
+    url: HttpUrl
+
+
+class TargetPageInfo(BaseModel):
+    url: str
+    title: Optional[str] = None
+    keywords: list[str] = []  # Extracted keywords from target page content
+
+
 class BulkAnalyzeResponse(BaseModel):
     results: list[PageResult]
     summary: BulkSummary
+    target_page_info: Optional[TargetPageInfo] = None  # Info about the target page when filter is active
 
 
 # Health check

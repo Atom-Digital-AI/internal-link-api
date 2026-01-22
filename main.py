@@ -16,9 +16,11 @@ from models import (
     BulkAnalyzeRequest,
     BulkAnalyzeResponse,
     BulkSummary,
+    FetchTargetRequest,
+    TargetPageInfo,
 )
 from sitemap_parser import fetch_sitemap
-from scraper import analyze_page, analyze_page_summary
+from scraper import analyze_page, analyze_page_summary, fetch_target_page_content
 
 # Configurable limits via environment variables
 MAX_BULK_URLS = int(os.environ.get("MAX_BULK_URLS", "100"))
@@ -81,17 +83,49 @@ async def analyze_url(request: AnalyzeRequest):
     return await analyze_page(str(request.url), request.target_pattern)
 
 
+@app.post("/fetch-target", response_model=TargetPageInfo)
+async def fetch_target(request: FetchTargetRequest):
+    """
+    Fetch a target page and extract its title and keywords for semantic matching.
+    Use this to get keywords for relevance scoring in focused search mode.
+    """
+    return await fetch_target_page_content(str(request.url))
+
+
 @app.post("/bulk-analyze", response_model=BulkAnalyzeResponse)
 async def bulk_analyze(request: BulkAnalyzeRequest):
     """
     Analyze multiple URLs with a 1-second delay between requests.
     Flags pages where link_density > threshold OR target_link_count == 0.
+
+    Optional filters:
+    - filter_target_url: Specific page to build links to (fetches and extracts keywords)
+    - filter_keyword: Additional keyword to focus on
+    - filter_match_type: "exact" or "stemmed" matching
     """
     if len(request.urls) > MAX_BULK_URLS:
         raise HTTPException(
             status_code=400,
             detail=f"Too many URLs. Maximum allowed: {MAX_BULK_URLS}, received: {len(request.urls)}"
         )
+
+    # Build keyword list for relevance scoring
+    filter_keywords: list[str] = []
+    target_page_info = None
+
+    # If a target URL is specified, fetch its content and extract keywords
+    if request.filter_target_url:
+        target_page_info = await fetch_target_page_content(request.filter_target_url)
+        filter_keywords.extend(target_page_info.keywords)
+
+    # Add explicit keyword filter if provided
+    if request.filter_keyword:
+        # Add the keyword and its individual words
+        filter_keywords.append(request.filter_keyword)
+        # Also add individual words from multi-word keywords
+        words = request.filter_keyword.split()
+        if len(words) > 1:
+            filter_keywords.extend(words)
 
     results = []
     needs_links = 0
@@ -103,6 +137,8 @@ async def bulk_analyze(request: BulkAnalyzeRequest):
             str(url),
             request.target_pattern,
             request.link_ratio_threshold,
+            filter_keywords=filter_keywords if filter_keywords else None,
+            filter_match_type=request.filter_match_type,
         )
         results.append(result)
 
@@ -125,6 +161,7 @@ async def bulk_analyze(request: BulkAnalyzeRequest):
             has_good_density=has_good_density,
             failed=failed,
         ),
+        target_page_info=target_page_info,
     )
 
 
