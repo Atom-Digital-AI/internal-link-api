@@ -16,3 +16,13 @@ Started: Wed Feb 18 21:17:15 GMT 2026
   - stripe installed at v14.3.0 (much newer than >=7.0.0 requirement - API may differ from older docs)
   - sib-api-v3-sdk installed at v7.6.0
 ---
+
+## 2026-02-18 21:35 - US-002
+- What was implemented: Created database.py with lazy-initialized async SQLAlchemy engine
+- Files changed: database.py (new)
+- **Learnings for future iterations:**
+  - Engine creation must be deferred (lazy) since DATABASE_URL may be empty at import time
+  - Use postgresql+asyncpg:// prefix for async engine; handle postgres:// and postgresql:// URL variants
+  - async_session_factory is a callable that returns AsyncSession instances
+  - get_db() is an async generator FastAPI dependency that handles commit/rollback/close
+---
