@@ -78,3 +78,14 @@ Started: Wed Feb 18 21:17:15 GMT 2026
   - sib_api_v3_sdk uses Configuration() with api_key["api-key"] pattern
   - All email functions are synchronous (sib_api_v3_sdk is not async)
 ---
+
+## 2026-02-18 22:05 - US-010, US-011, US-012
+- What was implemented: billing/router.py (checkout, portal, webhook), billing/dependencies.py
+- Files changed: billing/__init__.py, billing/router.py, billing/dependencies.py (all new)
+- **Learnings for future iterations:**
+  - stripe 14.x uses stripe.checkout.Session.create(), stripe.billing_portal.Session.create()
+  - stripe 14.x: stripe.error.SignatureVerificationError for invalid webhooks
+  - stripe.Webhook.construct_event() validates signature
+  - User is found by metadata user_id in checkout.session.completed (more reliable than email)
+  - check_bulk_url_limit is a sync function (not async), not a FastAPI dependency
+---
