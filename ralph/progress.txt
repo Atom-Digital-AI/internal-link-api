@@ -112,3 +112,17 @@ Started: Wed Feb 18 21:17:15 GMT 2026
   - Rate limit for /auth/login goes in the route decorator: @limiter.limit("10/15minutes")
   - The _noop middleware was unnecessary, removed it
 ---
+
+## 2026-02-18 - US-017
+- What was implemented: React Router setup, AuthProvider, all page components (Login, Register, ForgotPassword, ResetPassword, Pricing, Account, AppPage)
+- Files changed: frontend/src/main.tsx (updated), frontend/src/router.tsx (new), frontend/src/contexts/AuthContext.tsx (new), frontend/src/pages/*.tsx (all new)
+- **Learnings for future iterations:**
+  - router.tsx and AuthContext.tsx were already partially created prior to this iteration
+  - main.tsx now wraps with AuthProvider + AppRouter (BrowserRouter was already present)
+  - AppPage.tsx simply re-exports the existing App component: `export { default } from '../App'`
+  - All pages use inline CSS styles with CSS variables from index.css (var(--chrome-bg), var(--brand-gradient), etc.)
+  - The original App.tsx contains the full application logic - it becomes the "main app page" via AppPage.tsx
+  - Build uses `npm run build` (tsc -b && vite build) in frontend/ directory
+  - react-router-dom v7 is installed (already in package.json before this story)
+  - ProtectedRoute checks isLoading state and shows spinner before redirecting to avoid flash on session restore
+---
