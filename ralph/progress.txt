@@ -1,0 +1,18 @@
+# Ralph Progress Log
+Started: Wed Feb 18 21:17:15 GMT 2026
+---
+
+## Codebase Patterns
+- Use .venv/bin/python and .venv/bin/pip for all Python operations (not system python)
+- The project uses Python 3.14 with a local .venv virtual environment
+- Existing deps: fastapi, uvicorn[standard], httpx, beautifulsoup4, trafilatura, lxml, pydantic>=2.5.0
+
+## 2026-02-18 21:30 - US-001
+- What was implemented: Added all required Python packages for SaaS backend to requirements.txt
+- Files changed: requirements.txt
+- **Learnings for future iterations:**
+  - Use .venv/bin/pip to install, not system pip
+  - All packages installed successfully: passlib[bcrypt], python-jose[cryptography], asyncpg, sqlalchemy[asyncio], alembic, stripe, sib-api-v3-sdk, slowapi, python-multipart, email-validator
+  - stripe installed at v14.3.0 (much newer than >=7.0.0 requirement - API may differ from older docs)
+  - sib-api-v3-sdk installed at v7.6.0
+---
