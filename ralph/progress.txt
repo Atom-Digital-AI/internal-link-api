@@ -126,3 +126,14 @@ Started: Wed Feb 18 21:17:15 GMT 2026
   - react-router-dom v7 is installed (already in package.json before this story)
   - ProtectedRoute checks isLoading state and shows spinner before redirecting to avoid flash on session restore
 ---
+
+## 2026-02-18 - US-018
+- What was implemented: AuthContext was already fully implemented in US-017. Verified all acceptance criteria are met and build passes.
+- Files changed: ralph/prd.json (marked passes: true)
+- **Learnings for future iterations:**
+  - US-018 (AuthContext) was implemented alongside US-017 in a single prior iteration - the PRD story was already complete
+  - AuthContext.tsx provides: user, accessToken, isLoading, login, logout, register, setAccessToken
+  - Access token is stored in React state only (not localStorage) - security-compliant
+  - Session restoration uses POST /auth/refresh with credentials: 'include' to send the httpOnly cookie
+  - fetchMe() is memoized with useCallback to avoid re-rendering loops in useEffect
+---
