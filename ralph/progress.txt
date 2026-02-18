@@ -57,3 +57,14 @@ Started: Wed Feb 18 21:17:15 GMT 2026
   - JWT_SECRET is read at module level but uses os.environ.get() - set before importing if testing
   - decode_token raises HTTPException 401 on any JWTError (expired, invalid signature, etc.)
 ---
+
+## 2026-02-18 21:55 - US-006, US-007, US-008
+- What was implemented: auth/router.py with all auth endpoints + auth/dependencies.py
+- Files changed: auth/router.py (new), auth/dependencies.py (new)
+- **Learnings for future iterations:**
+  - GET /user/me uses lambda dependency placeholder in auth/router.py; overridden in main.py with app.dependency_overrides
+  - httpOnly refresh cookie uses path="/auth/refresh" to scope it to only that endpoint
+  - forgot-password stores SHA-256 hash of reset token (not plaintext) in DB
+  - send_password_reset_email imported as `from email_service import ...` (not `email.service` - avoid stdlib email module collision)
+  - Rate limiting for /auth/login applied in main.py (not in the router)
+---
