@@ -47,3 +47,13 @@ Started: Wed Feb 18 21:17:15 GMT 2026
   - ai_usage has unique constraint on user_id via __table_args__ = (UniqueConstraint(...),)
   - AiUsage relationship is uselist=False (one-to-one with User)
 ---
+
+## 2026-02-18 21:50 - US-005
+- What was implemented: Created auth/utils.py with password hashing and JWT token functions
+- Files changed: auth/__init__.py (new), auth/utils.py (new)
+- **Learnings for future iterations:**
+  - passlib[bcrypt] has compatibility issues with bcrypt 5.x (missing __about__ attribute, changed API)
+  - Use `import bcrypt` directly instead of passlib for hashing: bcrypt.gensalt(rounds=12) and bcrypt.hashpw()
+  - JWT_SECRET is read at module level but uses os.environ.get() - set before importing if testing
+  - decode_token raises HTTPException 401 on any JWTError (expired, invalid signature, etc.)
+---
