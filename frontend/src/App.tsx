@@ -21,6 +21,13 @@ import './App.css';
 
 type Step = 'setup' | 'select' | 'results' | 'detail';
 
+const STEPS: { key: Step; label: string; num: number }[] = [
+  { key: 'setup', label: 'Configure', num: 1 },
+  { key: 'select', label: 'Select Pages', num: 2 },
+  { key: 'results', label: 'Results', num: 3 },
+  { key: 'detail', label: 'Details', num: 4 },
+];
+
 function App() {
   const [step, setStep] = useState<Step>('setup');
   const [config, setConfig] = useState<ConfigResponse | null>(null);
@@ -125,7 +132,6 @@ function App() {
         keywords = buildKeywordList(fetchedTargetInfo.keywords, filterKeyword || null);
       } catch (err) {
         console.error('Failed to fetch target page:', err);
-        // Continue without target page info
       }
     } else if (filterKeyword) {
       keywords = buildKeywordList([], filterKeyword);
@@ -149,7 +155,6 @@ function App() {
             ? 'needs_links'
             : 'good';
 
-          // Calculate keyword relevance if filters are active
           const keywordRelevance = keywords.length > 0
             ? calculateKeywordRelevance(data.extracted_content, keywords, filterMatchType)
             : null;
@@ -191,9 +196,7 @@ function App() {
         setAnalysisProgress({ current: i + 1, total });
       }
 
-      // Sort by relevance (if active) then by lastmod date
       pageResults.sort((a, b) => {
-        // If relevance is active, sort by relevance first (highest first)
         if (keywords.length > 0) {
           const relA = a.keyword_relevance ?? -1;
           const relB = b.keyword_relevance ?? -1;
@@ -201,7 +204,6 @@ function App() {
             return relB - relA;
           }
         }
-        // Then by lastmod date, newest first (nulls at end)
         if (!a.lastmod && !b.lastmod) return 0;
         if (!a.lastmod) return 1;
         if (!b.lastmod) return -1;
@@ -316,7 +318,6 @@ function App() {
     const total = urls.length;
     setAnalysisProgress({ current: 0, total });
 
-    // Use existing target page info or fetch if filter is active
     let keywords: string[] = [];
     if (targetPageInfo) {
       keywords = buildKeywordList(targetPageInfo.keywords, filterKeyword || null);
@@ -350,7 +351,6 @@ function App() {
             ? 'needs_links'
             : 'good';
 
-          // Calculate keyword relevance if filters are active
           const keywordRelevance = keywords.length > 0
             ? calculateKeywordRelevance(data.extracted_content, keywords, filterMatchType)
             : null;
@@ -392,9 +392,7 @@ function App() {
         setAnalysisProgress({ current: i + 1, total });
       }
 
-      // Sort by relevance (if active) then by lastmod date
       pageResults.sort((a, b) => {
-        // If relevance is active, sort by relevance first (highest first)
         if (keywords.length > 0) {
           const relA = a.keyword_relevance ?? -1;
           const relB = b.keyword_relevance ?? -1;
@@ -402,7 +400,6 @@ function App() {
             return relB - relA;
           }
         }
-        // Then by lastmod date, newest first (nulls at end)
         if (!a.lastmod && !b.lastmod) return 0;
         if (!a.lastmod) return 1;
         if (!b.lastmod) return -1;
@@ -424,408 +421,435 @@ function App() {
     }
   };
 
+  const stepIndex = STEPS.findIndex(s => s.key === step);
+
   return (
-    <div className="app">
-      <header>
-        <div className="header-content">
-          <div>
-            <h1>Internal Link Finder</h1>
-            <p>Find pages that need internal links and get AI-powered suggestions</p>
+    <div className="app-shell">
+      {/* ── GRADIENT ACCENT BAR ── */}
+      <div className="accent-bar" />
+
+      {/* ── DARK HEADER ── */}
+      <header className="app-header">
+        <div className="app-header__inner">
+          <div className="app-header__brand">
+            <span className="app-header__logo">LS</span>
+            <div>
+              <h1 className="app-header__title">LinkScope</h1>
+              <p className="app-header__subtitle">Internal Link Finder</p>
+            </div>
           </div>
-          <div className="header-actions">
-            <button
-              onClick={() => setShowGuide(true)}
-              className="help-btn"
-            >
-              ? Help
+
+          <nav className="step-nav" aria-label="Progress">
+            {STEPS.map((s, i) => (
+              <div
+                key={s.key}
+                className={`step-nav__item ${i === stepIndex ? 'step-nav__item--active' : ''} ${i < stepIndex ? 'step-nav__item--done' : ''}`}
+              >
+                <span className="step-nav__num">{i < stepIndex ? '\u2713' : s.num}</span>
+                <span className="step-nav__label">{s.label}</span>
+                {i < STEPS.length - 1 && <span className="step-nav__sep" />}
+              </div>
+            ))}
+          </nav>
+
+          <div className="app-header__actions">
+            <button onClick={() => setShowGuide(true)} className="header-btn">
+              <span className="header-btn__icon">?</span>
+              <span className="header-btn__text">Help</span>
             </button>
-            <button
-              onClick={() => setShowSavedLinks(true)}
-              className="saved-links-btn"
-            >
-              Saved Links {savedLinksCount > 0 && `(${savedLinksCount})`}
+            <button onClick={() => setShowSavedLinks(true)} className="header-btn">
+              <span className="header-btn__text">Saved Links</span>
+              {savedLinksCount > 0 && <span className="header-btn__badge">{savedLinksCount}</span>}
             </button>
             {savedSessions.length > 0 && (
-              <button
-                onClick={() => setShowSavedSessions(true)}
-                className="saved-sessions-btn"
-              >
-                Saved Sessions ({savedSessions.length})
+              <button onClick={() => setShowSavedSessions(true)} className="header-btn">
+                <span className="header-btn__text">Sessions</span>
+                <span className="header-btn__badge">{savedSessions.length}</span>
               </button>
             )}
           </div>
         </div>
       </header>
 
-      {error && (
-        <div className="error">
-          {error}
-          <button onClick={() => setError(null)}>&times;</button>
-        </div>
-      )}
-
-      {step === 'setup' && (
-        <section className="setup">
-          <form onSubmit={handleFetchSitemap}>
-            <div className="form-group">
-              <label htmlFor="domain" className="label-with-tooltip">
-                Website Domain
-                <TooltipIcon
-                  content="Enter the full URL of your website (e.g., https://example.com). The sitemap will be fetched to find pages for analysis."
-                  position="right"
-                />
-              </label>
-              <input
-                id="domain"
-                type="url"
-                placeholder="https://example.com"
-                value={domain}
-                onChange={e => setDomain(e.target.value)}
-                required
-              />
+      {/* ── MAIN CONTENT ── */}
+      <main className="app-main">
+        <div className="app-content">
+          {error && (
+            <div className="error">
+              <span>{error}</span>
+              <button onClick={() => setError(null)}>&times;</button>
             </div>
+          )}
 
-            <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="source" className="label-with-tooltip">
-                  Source Pattern (pages to analyze)
-                  <TooltipIcon
-                    content="URL pattern to identify pages to analyze for missing internal links. Example: '/blog/' matches all blog posts. Leave empty to include all pages."
-                    position="right"
-                  />
-                </label>
-                <input
-                  id="source"
-                  type="text"
-                  placeholder="/blog/"
-                  value={sourcePattern}
-                  onChange={e => setSourcePattern(e.target.value)}
-                />
+          {step === 'setup' && (
+            <section className="setup">
+              <div className="setup__hero">
+                <h2 className="setup__heading">Analyze Your Internal Links</h2>
+                <p className="setup__desc">Enter your website details to discover linking opportunities and get AI-powered suggestions.</p>
               </div>
-
-              <div className="form-group">
-                <label htmlFor="target" className="label-with-tooltip">
-                  Target Pattern (pages to link to)
-                  <TooltipIcon
-                    content="URL pattern for pages you want to link TO. Example: '/services/' will suggest links from blog posts to service pages."
-                    position="right"
-                  />
-                </label>
-                <input
-                  id="target"
-                  type="text"
-                  placeholder="/services/"
-                  value={targetPattern}
-                  onChange={e => setTargetPattern(e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div className="filter-section">
-              <h3 className="filter-section__title">
-                Focus Your Search (Optional)
-                <TooltipIcon
-                  content="Optionally focus your search on building links to a specific page or for a specific keyword. Leave empty to find all opportunities."
-                  position="right"
-                />
-              </h3>
-
-              <div className="form-group">
-                <label htmlFor="filterTargetUrl" className="label-with-tooltip">
-                  Target Page URL
-                  <TooltipIcon
-                    content="Enter a specific URL you want to build internal links TO. The tool will analyze source pages for relevance to this target."
-                    position="right"
-                  />
-                </label>
-                <input
-                  id="filterTargetUrl"
-                  type="url"
-                  placeholder="https://example.com/important-page"
-                  value={filterTargetUrl}
-                  onChange={e => setFilterTargetUrl(e.target.value)}
-                />
-              </div>
-
-              <div className="form-row">
+              <form onSubmit={handleFetchSitemap}>
                 <div className="form-group">
-                  <label htmlFor="filterKeyword" className="label-with-tooltip">
-                    Keyword
+                  <label htmlFor="domain" className="label-with-tooltip">
+                    Website Domain
                     <TooltipIcon
-                      content="Enter a keyword or phrase to focus on. Pages with content related to this keyword will be ranked higher."
+                      content="Enter the full URL of your website (e.g., https://example.com). The sitemap will be fetched to find pages for analysis."
                       position="right"
                     />
                   </label>
                   <input
-                    id="filterKeyword"
-                    type="text"
-                    placeholder="e.g., SEO audit"
-                    value={filterKeyword}
-                    onChange={e => setFilterKeyword(e.target.value)}
+                    id="domain"
+                    type="url"
+                    placeholder="https://example.com"
+                    value={domain}
+                    onChange={e => setDomain(e.target.value)}
+                    required
                   />
                 </div>
 
-                <div className="form-group">
-                  <label className="label-with-tooltip">
-                    Match Type
-                    <TooltipIcon
-                      content="Exact: matches the keyword exactly. Stemmed: matches variations (e.g., 'audit' matches 'audits', 'auditing')."
-                      position="right"
+                <div className="form-row">
+                  <div className="form-group">
+                    <label htmlFor="source" className="label-with-tooltip">
+                      Source Pattern (pages to analyze)
+                      <TooltipIcon
+                        content="URL pattern to identify pages to analyze for missing internal links. Example: '/blog/' matches all blog posts. Leave empty to include all pages."
+                        position="right"
+                      />
+                    </label>
+                    <input
+                      id="source"
+                      type="text"
+                      placeholder="/blog/"
+                      value={sourcePattern}
+                      onChange={e => setSourcePattern(e.target.value)}
                     />
-                  </label>
-                  <div className="radio-group">
-                    <label className="radio-label">
-                      <input
-                        type="radio"
-                        name="matchType"
-                        value="stemmed"
-                        checked={filterMatchType === 'stemmed'}
-                        onChange={() => setFilterMatchType('stemmed')}
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="target" className="label-with-tooltip">
+                      Target Pattern (pages to link to)
+                      <TooltipIcon
+                        content="URL pattern for pages you want to link TO. Example: '/services/' will suggest links from blog posts to service pages."
+                        position="right"
                       />
-                      Stemmed (Recommended)
                     </label>
-                    <label className="radio-label">
-                      <input
-                        type="radio"
-                        name="matchType"
-                        value="exact"
-                        checked={filterMatchType === 'exact'}
-                        onChange={() => setFilterMatchType('exact')}
-                      />
-                      Exact
-                    </label>
+                    <input
+                      id="target"
+                      type="text"
+                      placeholder="/services/"
+                      value={targetPattern}
+                      onChange={e => setTargetPattern(e.target.value)}
+                    />
                   </div>
                 </div>
-              </div>
 
-              {(filterTargetUrl || filterKeyword) && (
-                <button
-                  type="button"
-                  className="clear-filters-btn"
-                  onClick={() => {
-                    setFilterTargetUrl('');
-                    setFilterKeyword('');
-                    setFilterMatchType('stemmed');
-                  }}
-                >
-                  Clear Filters
-                </button>
-              )}
-            </div>
+                <div className="filter-section">
+                  <h3 className="filter-section__title">
+                    Focus Your Search (Optional)
+                    <TooltipIcon
+                      content="Optionally focus your search on building links to a specific page or for a specific keyword. Leave empty to find all opportunities."
+                      position="right"
+                    />
+                  </h3>
 
-            <button type="submit" disabled={loading} className="primary">
-              {loading ? 'Fetching Sitemap...' : 'Fetch Sitemap'}
-            </button>
-          </form>
-        </section>
-      )}
+                  <div className="form-group">
+                    <label htmlFor="filterTargetUrl" className="label-with-tooltip">
+                      Target Page URL
+                      <TooltipIcon
+                        content="Enter a specific URL you want to build internal links TO. The tool will analyze source pages for relevance to this target."
+                        position="right"
+                      />
+                    </label>
+                    <input
+                      id="filterTargetUrl"
+                      type="url"
+                      placeholder="https://example.com/important-page"
+                      value={filterTargetUrl}
+                      onChange={e => setFilterTargetUrl(e.target.value)}
+                    />
+                  </div>
 
-      {step === 'select' && (
-        <section className="select">
-          <div className="select-header">
-            <h2>Select Pages to Analyze</h2>
-            <p>
-              Found {sourcePages.length} source pages and {targetPages.length} target pages
-              {config && ` (max ${config.max_bulk_urls} at a time)`}
-            </p>
-            <div className="select-actions">
-              <Tooltip content="Select all available source pages (up to the maximum limit)." position="bottom">
-                <button onClick={selectAll}>Select All</button>
-              </Tooltip>
-              <Tooltip content="Deselect all pages to start fresh." position="bottom">
-                <button onClick={selectNone}>Select None</button>
-              </Tooltip>
-              <span className="selected-count">{selectedUrls.size} selected</span>
-            </div>
-          </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label htmlFor="filterKeyword" className="label-with-tooltip">
+                        Keyword
+                        <TooltipIcon
+                          content="Enter a keyword or phrase to focus on. Pages with content related to this keyword will be ranked higher."
+                          position="right"
+                        />
+                      </label>
+                      <input
+                        id="filterKeyword"
+                        type="text"
+                        placeholder="e.g., SEO audit"
+                        value={filterKeyword}
+                        onChange={e => setFilterKeyword(e.target.value)}
+                      />
+                    </div>
 
-          <div className="page-list">
-            {sourcePages.map(page => (
-              <label key={page.url} className="page-item">
-                <input
-                  type="checkbox"
-                  checked={selectedUrls.has(page.url)}
-                  onChange={() => toggleUrl(page.url)}
-                />
-                <span className="page-url">{page.url}</span>
-                {page.lastmod && (
-                  <span className="page-date">{page.lastmod}</span>
-                )}
-              </label>
-            ))}
-          </div>
+                    <div className="form-group">
+                      <label className="label-with-tooltip">
+                        Match Type
+                        <TooltipIcon
+                          content="Exact: matches the keyword exactly. Stemmed: matches variations (e.g., 'audit' matches 'audits', 'auditing')."
+                          position="right"
+                        />
+                      </label>
+                      <div className="radio-group">
+                        <label className="radio-label">
+                          <input
+                            type="radio"
+                            name="matchType"
+                            value="stemmed"
+                            checked={filterMatchType === 'stemmed'}
+                            onChange={() => setFilterMatchType('stemmed')}
+                          />
+                          Stemmed (Recommended)
+                        </label>
+                        <label className="radio-label">
+                          <input
+                            type="radio"
+                            name="matchType"
+                            value="exact"
+                            checked={filterMatchType === 'exact'}
+                            onChange={() => setFilterMatchType('exact')}
+                          />
+                          Exact
+                        </label>
+                      </div>
+                    </div>
+                  </div>
 
-          <div className="actions">
-            <button onClick={() => setStep('setup')}>Back</button>
-            <Tooltip content="Scan selected pages for content and existing links. Pages with low link density will be flagged." position="top">
-              <button
-                onClick={handleAnalyze}
-                disabled={loading || selectedUrls.size === 0}
-                className="primary"
-              >
-                {loading ? 'Analyzing...' : `Analyze ${selectedUrls.size} Pages`}
-              </button>
-            </Tooltip>
-          </div>
-        </section>
-      )}
-
-      {step === 'results' && (
-        <section className="results">
-          <div className="results-header">
-            <div className="results-title-row">
-              <h2>Analysis Results</h2>
-              <div className="results-actions-top">
-                <Tooltip content="Re-analyze all pages with fresh data from your website." position="bottom">
-                  <button
-                    onClick={handleRefreshResults}
-                    disabled={loading}
-                    className="refresh-btn"
-                  >
-                    {loading ? 'Refreshing...' : '↻ Refresh'}
-                  </button>
-                </Tooltip>
-                <Tooltip content="Save this analysis session to your browser for later access." position="bottom">
-                  <button
-                    onClick={handleSaveSession}
-                    className="save-btn"
-                  >
-                    {currentSessionId ? '✓ Update Saved' : '💾 Save'}
-                  </button>
-                </Tooltip>
-              </div>
-            </div>
-
-            {/* Filter banner */}
-            {(filterTargetUrl || filterKeyword) && (
-              <div className="filter-banner">
-                <span className="filter-banner__label">Focused Search:</span>
-                {filterTargetUrl && (
-                  <span className="filter-banner__item">
-                    <strong>Target:</strong> {targetPageInfo?.title || filterTargetUrl}
-                  </span>
-                )}
-                {filterKeyword && (
-                  <span className="filter-banner__item">
-                    <strong>Keyword:</strong> "{filterKeyword}" ({filterMatchType})
-                  </span>
-                )}
-                <button
-                  className="filter-banner__clear"
-                  onClick={() => {
-                    setFilterTargetUrl('');
-                    setFilterKeyword('');
-                    setFilterMatchType('stemmed');
-                    setTargetPageInfo(null);
-                  }}
-                >
-                  Clear
-                </button>
-              </div>
-            )}
-
-            {summary && (
-              <div className="summary">
-                <div className="stat">
-                  <span className="stat-value">{summary.total_scanned}</span>
-                  <span className="stat-label">Scanned</span>
-                </div>
-                <div className="stat needs">
-                  <span className="stat-value">{summary.needs_links}</span>
-                  <span className="stat-label">Need Links</span>
-                </div>
-                <div className="stat good">
-                  <span className="stat-value">{summary.has_good_density}</span>
-                  <span className="stat-label">Good</span>
-                </div>
-                <div className="stat failed">
-                  <span className="stat-value">{summary.failed}</span>
-                  <span className="stat-label">Failed</span>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <table className="results-table">
-            <thead>
-              <tr>
-                <th>Page</th>
-                <th>Published</th>
-                {(filterTargetUrl || filterKeyword) && <th>Relevance</th>}
-                <th>Words</th>
-                <th>Links</th>
-                <th>Target Links</th>
-                <th>Status</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {results.map(result => (
-                <tr key={result.url} className={`status-${result.status}`}>
-                  <td className="url-cell">
-                    <div className="title">{result.title || 'Untitled'}</div>
-                    <div className="url">{result.url}</div>
-                  </td>
-                  <td>{result.lastmod ? new Date(result.lastmod).toLocaleDateString() : '—'}</td>
                   {(filterTargetUrl || filterKeyword) && (
-                    <td className="relevance-cell">
-                      {result.keyword_relevance !== null ? (
-                        <div className="relevance-indicator">
-                          <div className="relevance-dots">
-                            {[1, 2, 3, 4, 5].map(i => (
-                              <span
-                                key={i}
-                                className={`relevance-dot ${i <= result.keyword_relevance! ? 'active' : ''}`}
-                              />
-                            ))}
-                          </div>
-                          <span className="relevance-label">
-                            {result.keyword_relevance === 0 ? 'None' :
-                             result.keyword_relevance <= 2 ? 'Low' :
-                             result.keyword_relevance <= 3 ? 'Medium' : 'High'}
-                          </span>
-                        </div>
-                      ) : '—'}
-                    </td>
+                    <button
+                      type="button"
+                      className="clear-filters-btn"
+                      onClick={() => {
+                        setFilterTargetUrl('');
+                        setFilterKeyword('');
+                        setFilterMatchType('stemmed');
+                      }}
+                    >
+                      Clear Filters
+                    </button>
                   )}
-                  <td>{result.word_count}</td>
-                  <td>{result.internal_link_count}</td>
-                  <td>{result.target_link_count}</td>
-                  <td>
-                    <span className={`badge ${result.status}`}>
-                      {result.status === 'needs_links' ? 'Needs Links' :
-                       result.status === 'good' ? 'Good' : 'Failed'}
-                    </span>
-                  </td>
-                  <td>
-                    {result.status !== 'failed' && (
-                      <button
-                        onClick={() => handleViewDetail(result.url)}
-                        className="small"
-                      >
-                        Details
-                      </button>
+                </div>
+
+                <button type="submit" disabled={loading} className="primary">
+                  {loading ? 'Fetching Sitemap...' : 'Fetch Sitemap'}
+                </button>
+              </form>
+            </section>
+          )}
+
+          {step === 'select' && (
+            <section className="select">
+              <div className="select-header">
+                <h2>Select Pages to Analyze</h2>
+                <p>
+                  Found {sourcePages.length} source pages and {targetPages.length} target pages
+                  {config && ` (max ${config.max_bulk_urls} at a time)`}
+                </p>
+                <div className="select-actions">
+                  <Tooltip content="Select all available source pages (up to the maximum limit)." position="bottom">
+                    <button onClick={selectAll}>Select All</button>
+                  </Tooltip>
+                  <Tooltip content="Deselect all pages to start fresh." position="bottom">
+                    <button onClick={selectNone}>Select None</button>
+                  </Tooltip>
+                  <span className="selected-count">{selectedUrls.size} selected</span>
+                </div>
+              </div>
+
+              <div className="page-list">
+                {sourcePages.map(page => (
+                  <label key={page.url} className="page-item">
+                    <input
+                      type="checkbox"
+                      checked={selectedUrls.has(page.url)}
+                      onChange={() => toggleUrl(page.url)}
+                    />
+                    <span className="page-url">{page.url}</span>
+                    {page.lastmod && (
+                      <span className="page-date">{page.lastmod}</span>
                     )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </label>
+                ))}
+              </div>
 
-          <div className="actions">
-            <button onClick={() => setStep('select')}>Back to Selection</button>
-            <button onClick={() => setStep('setup')}>New Analysis</button>
-          </div>
-        </section>
-      )}
+              <div className="actions">
+                <button onClick={() => setStep('setup')}>Back</button>
+                <Tooltip content="Scan selected pages for content and existing links. Pages with low link density will be flagged." position="top">
+                  <button
+                    onClick={handleAnalyze}
+                    disabled={loading || selectedUrls.size === 0}
+                    className="primary"
+                  >
+                    {loading ? 'Analyzing...' : `Analyze ${selectedUrls.size} Pages`}
+                  </button>
+                </Tooltip>
+              </div>
+            </section>
+          )}
 
-      {step === 'detail' && detailData && (
-        <ContextualEditor
-          pageData={detailData}
-          targetPages={targetPages}
-          onBack={() => setStep('results')}
-        />
-      )}
+          {step === 'results' && (
+            <section className="results">
+              <div className="results-header">
+                <div className="results-title-row">
+                  <h2>Analysis Results</h2>
+                  <div className="results-actions-top">
+                    <Tooltip content="Re-analyze all pages with fresh data from your website." position="bottom">
+                      <button
+                        onClick={handleRefreshResults}
+                        disabled={loading}
+                        className="refresh-btn"
+                      >
+                        {loading ? 'Refreshing...' : 'Refresh'}
+                      </button>
+                    </Tooltip>
+                    <Tooltip content="Save this analysis session to your browser for later access." position="bottom">
+                      <button
+                        onClick={handleSaveSession}
+                        className="save-btn"
+                      >
+                        {currentSessionId ? 'Update Saved' : 'Save Session'}
+                      </button>
+                    </Tooltip>
+                  </div>
+                </div>
+
+                {(filterTargetUrl || filterKeyword) && (
+                  <div className="filter-banner">
+                    <span className="filter-banner__label">Focused Search:</span>
+                    {filterTargetUrl && (
+                      <span className="filter-banner__item">
+                        <strong>Target:</strong> {targetPageInfo?.title || filterTargetUrl}
+                      </span>
+                    )}
+                    {filterKeyword && (
+                      <span className="filter-banner__item">
+                        <strong>Keyword:</strong> &ldquo;{filterKeyword}&rdquo; ({filterMatchType})
+                      </span>
+                    )}
+                    <button
+                      className="filter-banner__clear"
+                      onClick={() => {
+                        setFilterTargetUrl('');
+                        setFilterKeyword('');
+                        setFilterMatchType('stemmed');
+                        setTargetPageInfo(null);
+                      }}
+                    >
+                      Clear
+                    </button>
+                  </div>
+                )}
+
+                {summary && (
+                  <div className="summary">
+                    <div className="stat">
+                      <span className="stat-value">{summary.total_scanned}</span>
+                      <span className="stat-label">Scanned</span>
+                    </div>
+                    <div className="stat needs">
+                      <span className="stat-value">{summary.needs_links}</span>
+                      <span className="stat-label">Need Links</span>
+                    </div>
+                    <div className="stat good">
+                      <span className="stat-value">{summary.has_good_density}</span>
+                      <span className="stat-label">Good</span>
+                    </div>
+                    <div className="stat failed">
+                      <span className="stat-value">{summary.failed}</span>
+                      <span className="stat-label">Failed</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="table-wrap">
+                <table className="results-table">
+                  <thead>
+                    <tr>
+                      <th>Page</th>
+                      <th>Published</th>
+                      {(filterTargetUrl || filterKeyword) && <th>Relevance</th>}
+                      <th>Words</th>
+                      <th>Links</th>
+                      <th>Target Links</th>
+                      <th>Status</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {results.map(result => (
+                      <tr key={result.url} className={`status-${result.status}`}>
+                        <td className="url-cell">
+                          <div className="title">{result.title || 'Untitled'}</div>
+                          <div className="url">{result.url}</div>
+                        </td>
+                        <td>{result.lastmod ? new Date(result.lastmod).toLocaleDateString() : '\u2014'}</td>
+                        {(filterTargetUrl || filterKeyword) && (
+                          <td className="relevance-cell">
+                            {result.keyword_relevance !== null ? (
+                              <div className="relevance-indicator">
+                                <div className="relevance-dots">
+                                  {[1, 2, 3, 4, 5].map(i => (
+                                    <span
+                                      key={i}
+                                      className={`relevance-dot ${i <= result.keyword_relevance! ? 'active' : ''}`}
+                                    />
+                                  ))}
+                                </div>
+                                <span className="relevance-label">
+                                  {result.keyword_relevance === 0 ? 'None' :
+                                   result.keyword_relevance <= 2 ? 'Low' :
+                                   result.keyword_relevance <= 3 ? 'Medium' : 'High'}
+                                </span>
+                              </div>
+                            ) : '\u2014'}
+                          </td>
+                        )}
+                        <td>{result.word_count.toLocaleString()}</td>
+                        <td>{result.internal_link_count}</td>
+                        <td>{result.target_link_count}</td>
+                        <td>
+                          <span className={`badge ${result.status}`}>
+                            {result.status === 'needs_links' ? 'Needs Links' :
+                             result.status === 'good' ? 'Good' : 'Failed'}
+                          </span>
+                        </td>
+                        <td>
+                          {result.status !== 'failed' && (
+                            <button
+                              onClick={() => handleViewDetail(result.url)}
+                              className="small primary"
+                            >
+                              Details
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="actions">
+                <button onClick={() => setStep('select')}>Back to Selection</button>
+                <button onClick={() => setStep('setup')}>New Analysis</button>
+              </div>
+            </section>
+          )}
+
+          {step === 'detail' && detailData && (
+            <ContextualEditor
+              pageData={detailData}
+              targetPages={targetPages}
+              onBack={() => setStep('results')}
+            />
+          )}
+        </div>
+      </main>
 
       {loading && step !== 'detail' && (
         <div className="loading-overlay">
@@ -838,7 +862,7 @@ function App() {
                 />
               </div>
               <p className="progress-text">
-                {analysisProgress.current} of {analysisProgress.total} pages analyzed
+                Analyzing {analysisProgress.current} of {analysisProgress.total} pages
               </p>
             </div>
           ) : (
