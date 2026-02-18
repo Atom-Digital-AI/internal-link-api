@@ -25,7 +25,7 @@ export function ContextualEditor({
   targetPages,
   onBack
 }: ContextualEditorProps) {
-  const { user } = useAuth();
+  const { user, accessToken } = useAuth();
   const isFree = !user || user.plan === 'free';
   const [showAiProModal, setShowAiProModal] = useState(false);
 
@@ -89,7 +89,8 @@ export function ContextualEditor({
         targetPages,
         filterTargetUrl || undefined,
         filterKeyword || undefined,
-        filterMatchType
+        filterMatchType,
+        accessToken
       );
       setSuggestions(result);
     } catch (error) {

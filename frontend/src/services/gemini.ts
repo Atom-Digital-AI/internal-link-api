@@ -1,229 +1,62 @@
 import type { PageInfo, AnalyzeResponse, LinkSuggestion, MatchType } from '../types';
+import { getAiSuggestion } from './api';
 
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-const GEMINI_MODEL = import.meta.env.VITE_GEMINI_MODEL || 'gemini-1.5-flash';
-
-interface GeminiResponse {
-  candidates: Array<{
-    content: {
-      parts: Array<{
-        text: string;
-      }>;
-    };
-  }>;
-}
-
-/**
- * Build the filter instruction for the AI prompt based on active filters
- */
-function buildFilterInstruction(
-  filterTargetUrl?: string,
-  filterKeyword?: string,
-  filterMatchType?: MatchType
-): string {
-  const instructions: string[] = [];
-
-  if (filterTargetUrl && filterKeyword) {
-    // Both filters active
-    const matchDesc = filterMatchType === 'exact'
-      ? 'using exactly the keyword'
-      : 'using the keyword or closely related terms';
-    instructions.push(`**IMPORTANT FILTER:** Focus specifically on finding opportunities to link to ${filterTargetUrl} ${matchDesc} "${filterKeyword}" as anchor text.`);
-  } else if (filterTargetUrl) {
-    // Only target URL filter
-    instructions.push(`**IMPORTANT FILTER:** Focus specifically on finding opportunities to link to this target page: ${filterTargetUrl}`);
-    instructions.push('All suggestions MUST link to this specific URL.');
-  } else if (filterKeyword) {
-    // Only keyword filter
-    const matchDesc = filterMatchType === 'exact'
-      ? 'the exact keyword'
-      : 'the keyword or semantically related terms';
-    instructions.push(`**IMPORTANT FILTER:** Focus on finding opportunities to use "${filterKeyword}" or related terms as anchor text.`);
-    instructions.push(`Look for places where ${matchDesc} appears naturally in the content and could link to a relevant target page.`);
-  }
-
-  return instructions.length > 0
-    ? '\n\n' + instructions.join('\n')
-    : '';
-}
+// Note: VITE_GEMINI_API_KEY and VITE_GEMINI_MODEL are no longer used.
+// AI suggestions are proxied through the backend /ai/suggest endpoint.
 
 export async function getInternalLinkSuggestions(
   pageData: AnalyzeResponse,
   targetPages: PageInfo[],
   filterTargetUrl?: string,
-  filterKeyword?: string,
-  filterMatchType?: MatchType
+  _filterKeyword?: string,
+  _filterMatchType?: MatchType,
+  accessToken?: string | null
 ): Promise<LinkSuggestion[]> {
-  if (!GEMINI_API_KEY) {
-    throw new Error('Gemini API key not configured. Set VITE_GEMINI_API_KEY environment variable.');
+  // Determine which target pages to request suggestions for
+  const pagesToAnalyze = filterTargetUrl
+    ? targetPages.filter(p => p.url === filterTargetUrl).slice(0, 1)
+    : targetPages.slice(0, 5);
+
+  if (pagesToAnalyze.length === 0) {
+    throw new Error('No target pages available for AI suggestions.');
   }
 
-  // Build filter-specific instructions
-  const filterInstruction = buildFilterInstruction(filterTargetUrl, filterKeyword, filterMatchType);
+  const token = accessToken || null;
+  const sourceContent = pageData.extracted_content.slice(0, 6000);
 
-  // Determine which target pages to show
-  const pagesToShow = filterTargetUrl
-    ? targetPages.filter(p => p.url === filterTargetUrl)
-    : targetPages.slice(0, 20);
-
-  const prompt = `You are an SEO expert. Analyze this blog post and suggest internal linking opportunities.
-
-**Page Title:** ${pageData.title || 'Untitled'}
-**URL:** ${pageData.url}
-**Word Count:** ${pageData.word_count}
-**Current Internal Links:** ${pageData.internal_links.total}
-**Links to Target Pages:** ${pageData.internal_links.to_target_pages}
-${filterInstruction}
-
-**Target Pages Available to Link To:**
-${pagesToShow.map(p => `- ${p.url}`).join('\n')}
-
-**Article Content:**
-${pageData.extracted_content.slice(0, 8000)}
-
-Suggest 3-5 specific places in the content where internal links to target pages would be natural and valuable for SEO.${filterKeyword ? ` Prioritize opportunities that use "${filterKeyword}" or related terms as anchor text.` : ''}
-
-IMPORTANT: Respond ONLY with valid JSON in this exact format, no other text:
-{
-  "suggestions": [
-    {
-      "sentence": "The exact sentence or phrase from the content where the link should be added",
-      "targetUrl": "The full URL from the target pages list to link to",
-      "anchorText": "The specific words to make into a link",
-      "reason": "Brief explanation of why this link makes sense"
-    }
-  ]
-}`;
-
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [{ text: prompt }],
-          },
-        ],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 4096,
-        },
-      }),
-    }
+  // Call backend /ai/suggest for each target page and collect suggestions
+  const results = await Promise.allSettled(
+    pagesToAnalyze.map(target =>
+      getAiSuggestion(token, {
+        source_url: pageData.url,
+        source_content: sourceContent,
+        target_url: target.url,
+        target_title: target.url,
+        target_keywords: [],
+      })
+    )
   );
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.error?.message || `Gemini API error: ${response.status}`);
+  const suggestions: LinkSuggestion[] = [];
+
+  for (let i = 0; i < results.length; i++) {
+    const result = results[i];
+    if (result.status === 'fulfilled') {
+      const { suggestion, reasoning } = result.value;
+      // The backend returns a text suggestion, not structured JSON.
+      // Wrap it into the LinkSuggestion format.
+      suggestions.push({
+        sentence: suggestion,
+        targetUrl: pagesToAnalyze[i].url,
+        anchorText: pagesToAnalyze[i].url.split('/').filter(Boolean).pop() || 'link',
+        reason: reasoning,
+      });
+    }
   }
 
-  const data: GeminiResponse = await response.json();
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-  if (!text) {
-    throw new Error('No response from Gemini');
+  if (suggestions.length === 0) {
+    throw new Error('Failed to get AI suggestions. Please try again.');
   }
 
-  // Parse JSON from response using multiple extraction strategies
-  const extractJson = (rawText: string): LinkSuggestion[] => {
-    // Strategy 1: Try extracting from ```json...``` or ```...``` code blocks
-    const codeBlockMatch = rawText.match(/```(?:json)?\s*([\s\S]*?)```/);
-    if (codeBlockMatch) {
-      try {
-        const parsed = JSON.parse(codeBlockMatch[1].trim());
-        if (parsed.suggestions && Array.isArray(parsed.suggestions)) {
-          return parsed.suggestions;
-        }
-      } catch {
-        // Continue to next strategy
-      }
-    }
-
-    // Strategy 2: Try finding a JSON object pattern starting with { and containing "suggestions"
-    const jsonObjectMatch = rawText.match(/\{[\s\S]*"suggestions"\s*:\s*\[[\s\S]*\][\s\S]*\}/);
-    if (jsonObjectMatch) {
-      try {
-        const parsed = JSON.parse(jsonObjectMatch[0]);
-        if (parsed.suggestions && Array.isArray(parsed.suggestions)) {
-          return parsed.suggestions;
-        }
-      } catch {
-        // Continue to next strategy
-      }
-    }
-
-    // Strategy 3: Try finding just the array portion
-    const arrayMatch = rawText.match(/\[\s*\{[\s\S]*"sentence"[\s\S]*\}\s*\]/);
-    if (arrayMatch) {
-      try {
-        const parsed = JSON.parse(arrayMatch[0]);
-        if (Array.isArray(parsed)) {
-          return parsed;
-        }
-      } catch {
-        // Continue to next strategy
-      }
-    }
-
-    // Strategy 4: Try parsing the raw text directly
-    try {
-      const parsed = JSON.parse(rawText.trim());
-      if (parsed.suggestions && Array.isArray(parsed.suggestions)) {
-        return parsed.suggestions;
-      }
-      if (Array.isArray(parsed)) {
-        return parsed;
-      }
-    } catch {
-      // Continue to next strategy
-    }
-
-    // Strategy 5: Salvage individual complete suggestions from truncated response
-    // This handles cases where the API response was cut off mid-JSON
-    const individualMatches = rawText.matchAll(
-      /\{\s*"sentence"\s*:\s*"(?:[^"\\]|\\.)*"\s*,\s*"targetUrl"\s*:\s*"(?:[^"\\]|\\.)*"\s*,\s*"anchorText"\s*:\s*"(?:[^"\\]|\\.)*"\s*,\s*"reason"\s*:\s*"(?:[^"\\]|\\.)*"\s*\}/g
-    );
-    const salvaged = [...individualMatches].map(m => {
-      try {
-        return JSON.parse(m[0]);
-      } catch {
-        return null;
-      }
-    }).filter(Boolean);
-    if (salvaged.length > 0) {
-      console.warn(`Salvaged ${salvaged.length} suggestions from partial response`);
-      return salvaged as LinkSuggestion[];
-    }
-
-    throw new Error('Could not extract valid JSON from response');
-  };
-
-  try {
-    const suggestions = extractJson(text);
-
-    // Validate that each suggestion has required fields
-    return suggestions.filter(s =>
-      s &&
-      typeof s.sentence === 'string' &&
-      typeof s.targetUrl === 'string' &&
-      typeof s.anchorText === 'string'
-    );
-  } catch (error) {
-    console.error('Failed to parse Gemini response:', text);
-    console.error('Parse error:', error);
-
-    // Detect truncation - response ends without proper JSON closure
-    const trimmed = text.trim();
-    const isTruncated = !trimmed.endsWith('}') && !trimmed.endsWith(']') &&
-      (trimmed.includes('"suggestions"') || trimmed.includes('"sentence"'));
-
-    if (isTruncated) {
-      throw new Error('AI response was truncated. Try again or reduce the content length.');
-    }
-    throw new Error('Failed to parse AI suggestions. Please try again.');
-  }
+  return suggestions;
 }
