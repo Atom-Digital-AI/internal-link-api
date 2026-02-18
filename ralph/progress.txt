@@ -36,3 +36,14 @@ Started: Wed Feb 18 21:17:15 GMT 2026
   - ai_usage has UNIQUE constraint on user_id (one row per user for monthly tracking)
   - All tables use gen_random_uuid() for primary keys
 ---
+
+## 2026-02-18 21:45 - US-004
+- What was implemented: Created db_models.py with SQLAlchemy ORM models for all 5 tables
+- Files changed: db_models.py (new)
+- **Learnings for future iterations:**
+  - Use mapped_column with Mapped[] typed annotations (SQLAlchemy 2.0 style)
+  - JSONB from sqlalchemy.dialects.postgresql for JSON columns
+  - UUID from sqlalchemy.dialects.postgresql with as_uuid=True for proper Python UUID handling
+  - ai_usage has unique constraint on user_id via __table_args__ = (UniqueConstraint(...),)
+  - AiUsage relationship is uselist=False (one-to-one with User)
+---
