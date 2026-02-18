@@ -138,6 +138,18 @@ Started: Wed Feb 18 21:17:15 GMT 2026
   - fetchMe() is memoized with useCallback to avoid re-rendering loops in useEffect
 ---
 
+## 2026-02-18 - US-022
+- What was implemented: Updated frontend/src/services/api.ts with auth headers, token refresh interceptor, and new SaaS API functions
+- Files changed: frontend/src/services/api.ts
+- **Learnings for future iterations:**
+  - registerAuthCallbacks() pattern: api.ts registers _onRefresh and _onClearAuth callbacks from AuthContext at startup
+  - Token refresh: if 401 received, call _onRefresh(), if it returns a new token retry the request once
+  - createAuthenticatedFetch(token) returns a typed helper function for component-level use
+  - All existing functions (getConfig, getSitemap, analyzePage, bulkAnalyze, fetchTargetPage) now accept optional token param
+  - New functions: getMe, getSessions, createSession, deleteSession, getSavedLinks, createSavedLink, deleteSavedLink, getAiSuggestion, createCheckoutSession, getBillingPortal
+  - fetchJson always sends credentials: 'include' for httpOnly cookie support
+---
+
 ## 2026-02-18 - US-021
 - What was implemented: ForgotPassword and ResetPassword pages were already implemented in a prior iteration (US-017). Verified all acceptance criteria are met and build passes.
 - Files changed: ralph/prd.json (marked passes: true)
