@@ -89,3 +89,14 @@ Started: Wed Feb 18 21:17:15 GMT 2026
   - User is found by metadata user_id in checkout.session.completed (more reliable than email)
   - check_bulk_url_limit is a sync function (not async), not a FastAPI dependency
 ---
+
+## 2026-02-18 22:10 - US-013, US-014, US-015
+- What was implemented: sessions/router.py, links/router.py, ai_router/router.py
+- Files changed: sessions/, links/, ai_router/ directories (all new)
+- **Learnings for future iterations:**
+  - Used ai_router/ directory (not ai/) to avoid conflicts with built-in Python names
+  - google-generativeai is deprecated; use google-genai with `from google import genai`
+  - genai.Client(api_key=...).models.generate_content() is the modern API
+  - AI usage resets monthly based on period_end check
+  - Bulk delete uses SQLAlchemy delete() with .in_() for efficient batch operations
+---
