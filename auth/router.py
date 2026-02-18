@@ -9,6 +9,7 @@ from pydantic import BaseModel, EmailStr
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from auth.dependencies import get_current_user as get_current_user_dep
 from auth.utils import (
     create_access_token,
     create_refresh_token,
@@ -294,13 +295,9 @@ async def reset_password(
 
 @user_router.get("/me", response_model=UserMeResponse)
 async def get_me(
-    current_user: User = Depends(lambda: None),
+    current_user: User = Depends(get_current_user_dep),
 ) -> UserMeResponse:
-    """Get current authenticated user profile (requires Bearer token).
-
-    The real dependency (get_current_user from auth.dependencies) is injected
-    by main.py via app.dependency_overrides to avoid circular imports.
-    """
+    """Get current authenticated user profile (requires Bearer token)."""
     return UserMeResponse(
         id=str(current_user.id),
         email=current_user.email,

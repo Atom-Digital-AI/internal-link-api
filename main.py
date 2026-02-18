@@ -1,58 +1,107 @@
 import asyncio
 import os
 from pathlib import Path
-from fastapi import FastAPI, HTTPException
+
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+from slowapi.util import get_remote_address
 
 from models import (
-    HealthResponse,
-    ConfigResponse,
-    SitemapRequest,
-    SitemapResponse,
     AnalyzeRequest,
     AnalyzeResponse,
     BulkAnalyzeRequest,
     BulkAnalyzeResponse,
     BulkSummary,
+    ConfigResponse,
     FetchTargetRequest,
+    HealthResponse,
+    SitemapRequest,
+    SitemapResponse,
     TargetPageInfo,
 )
-from sitemap_parser import fetch_sitemap
 from scraper import analyze_page, analyze_page_summary, fetch_target_page_content
+from sitemap_parser import fetch_sitemap
+
+# New SaaS routers
+from auth.router import router as auth_router
+from auth.router import user_router
+from billing.router import router as billing_router
+from sessions.router import router as sessions_router
+from links.router import router as links_router
+from ai_router.router import router as ai_router
 
 # Configurable limits via environment variables
 MAX_BULK_URLS = int(os.environ.get("MAX_BULK_URLS", "100"))
 
+# ---------------------------------------------------------------------------
+# Rate Limiter
+# ---------------------------------------------------------------------------
+limiter = Limiter(key_func=get_remote_address)
+
+# ---------------------------------------------------------------------------
+# App
+# ---------------------------------------------------------------------------
 app = FastAPI(
     title="Internal Link Finder API",
     description="API for analyzing internal links on websites",
-    version="1.0.0",
+    version="2.0.0",
 )
 
-# Configure CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
+
+# ---------------------------------------------------------------------------
+# CORS
+# ---------------------------------------------------------------------------
+_allowed_origins_env = os.environ.get("ALLOWED_ORIGINS", "")
+if _allowed_origins_env:
+    allowed_origins = [o.strip() for o in _allowed_origins_env.split(",") if o.strip()]
+else:
+    allowed_origins = [
         "http://localhost:3000",
         "http://localhost:5173",
         "http://localhost:5174",
         "http://127.0.0.1:3000",
         "http://127.0.0.1:5173",
         "http://127.0.0.1:5174",
-    ],
-    allow_origin_regex=r"https://.*\.(web\.app|firebaseapp\.com)$",
+    ]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# ---------------------------------------------------------------------------
+# Include routers
+# NOTE: billing/webhook must be included BEFORE auth middleware would block it.
+# The billing router itself handles Stripe signature verification.
+# ---------------------------------------------------------------------------
+app.include_router(auth_router)
+app.include_router(user_router)
+app.include_router(billing_router)
+app.include_router(sessions_router)
+app.include_router(links_router)
+app.include_router(ai_router)
+
+
+# ---------------------------------------------------------------------------
+# Existing endpoints
+# ---------------------------------------------------------------------------
+
 
 @app.get("/health", response_model=HealthResponse)
 async def health_check():
     """Simple health check for Railway."""
-    return HealthResponse(status="ok", version="1.0.0")
+    return HealthResponse(status="ok", version="2.0.0")
 
 
 @app.get("/config", response_model=ConfigResponse)
@@ -120,9 +169,7 @@ async def bulk_analyze(request: BulkAnalyzeRequest):
 
     # Add explicit keyword filter if provided
     if request.filter_keyword:
-        # Add the keyword and its individual words
         filter_keywords.append(request.filter_keyword)
-        # Also add individual words from multi-word keywords
         words = request.filter_keyword.split()
         if len(words) > 1:
             filter_keywords.extend(words)
