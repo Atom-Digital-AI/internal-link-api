@@ -138,6 +138,17 @@ Started: Wed Feb 18 21:17:15 GMT 2026
   - fetchMe() is memoized with useCallback to avoid re-rendering loops in useEffect
 ---
 
+## 2026-02-18 - US-024
+- What was implemented: Enhanced Account.tsx with creation date, AI usage progress bar, and Manage Billing button. Updated AuthContext User interface to include created_at field.
+- Files changed: frontend/src/pages/Account.tsx, frontend/src/contexts/AuthContext.tsx
+- **Learnings for future iterations:**
+  - AuthContext User interface needed created_at added to include account creation date
+  - AI usage fetched from /user/me/usage endpoint (gracefully handles if endpoint doesn't exist yet)
+  - Manage Billing button calls getBillingPortal() from api.ts, falls back to /pricing on error
+  - AI usage progress bar turns red when >= 180/200 calls used (warning threshold)
+  - Progress bar uses Math.min() to cap at 100% width
+---
+
 ## 2026-02-18 - US-023
 - What was implemented: Pricing page was already fully implemented in a prior iteration (US-017). Verified all acceptance criteria are met and build passes.
 - Files changed: ralph/prd.json (marked passes: true)
