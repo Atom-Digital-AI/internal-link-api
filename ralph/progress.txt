@@ -138,6 +138,16 @@ Started: Wed Feb 18 21:17:15 GMT 2026
   - fetchMe() is memoized with useCallback to avoid re-rendering loops in useEffect
 ---
 
+## 2026-02-18 - US-023
+- What was implemented: Pricing page was already fully implemented in a prior iteration (US-017). Verified all acceptance criteria are met and build passes.
+- Files changed: ralph/prd.json (marked passes: true)
+- **Learnings for future iterations:**
+  - Pricing.tsx has monthly/annual toggle, Free vs Pro two-column layout
+  - Uses window.location.href = data.url to redirect to Stripe checkout/portal
+  - Detects Pro status via user?.plan === 'pro' from AuthContext
+  - Uses API_BASE directly (not api.ts functions) for billing calls - could be refactored to use createCheckoutSession/getBillingPortal from api.ts in future
+---
+
 ## 2026-02-18 - US-022
 - What was implemented: Updated frontend/src/services/api.ts with auth headers, token refresh interceptor, and new SaaS API functions
 - Files changed: frontend/src/services/api.ts
