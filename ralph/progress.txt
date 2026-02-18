@@ -68,3 +68,13 @@ Started: Wed Feb 18 21:17:15 GMT 2026
   - send_password_reset_email imported as `from email_service import ...` (not `email.service` - avoid stdlib email module collision)
   - Rate limiting for /auth/login applied in main.py (not in the router)
 ---
+
+## 2026-02-18 22:00 - US-009
+- What was implemented: email_service.py with Brevo transactional email functions
+- Files changed: email_service.py (new)
+- **Learnings for future iterations:**
+  - Created email_service.py (not email/service.py) to avoid collision with Python stdlib `email` module
+  - auth/router.py already imports from email_service correctly
+  - sib_api_v3_sdk uses Configuration() with api_key["api-key"] pattern
+  - All email functions are synchronous (sib_api_v3_sdk is not async)
+---
