@@ -137,3 +137,13 @@ Started: Wed Feb 18 21:17:15 GMT 2026
   - Session restoration uses POST /auth/refresh with credentials: 'include' to send the httpOnly cookie
   - fetchMe() is memoized with useCallback to avoid re-rendering loops in useEffect
 ---
+
+## 2026-02-18 - US-019
+- What was implemented: Login page was already fully implemented in a prior iteration (US-017). Verified all acceptance criteria are met and build passes.
+- Files changed: ralph/prd.json (marked passes: true)
+- **Learnings for future iterations:**
+  - US-019 (Login page) was implemented alongside US-017 in a single prior iteration
+  - Login.tsx has: email/password/rememberMe fields, inline error display, redirect to / on success, links to /forgot-password and /register
+  - Uses dark theme with CSS variables (var(--chrome-bg), var(--brand-gradient), etc.)
+  - All pages use inline CSS styles with CSSProperties type for TypeScript safety
+---
