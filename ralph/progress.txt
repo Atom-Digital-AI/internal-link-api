@@ -26,3 +26,13 @@ Started: Wed Feb 18 21:17:15 GMT 2026
   - async_session_factory is a callable that returns AsyncSession instances
   - get_db() is an async generator FastAPI dependency that handles commit/rollback/close
 ---
+
+## 2026-02-18 21:40 - US-003
+- What was implemented: Created migrations/001_initial.sql with all 5 tables and RLS policies
+- Files changed: migrations/001_initial.sql (new)
+- **Learnings for future iterations:**
+  - Used app.current_user_id session variable pattern for RLS (set via SET LOCAL app.current_user_id = ... before queries)
+  - pgcrypto extension needed for gen_random_uuid()
+  - ai_usage has UNIQUE constraint on user_id (one row per user for monthly tracking)
+  - All tables use gen_random_uuid() for primary keys
+---
