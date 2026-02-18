@@ -218,6 +218,18 @@ Started: Wed Feb 18 21:17:15 GMT 2026
   - Button disabled when passwordMismatch is true (prevents submission with mismatched passwords)
 ---
 
+## 2026-02-18 - US-027
+- What was implemented: Updated gemini.ts to call backend /ai/suggest proxy instead of direct Gemini API. Updated ContextualEditor.tsx to pass accessToken to getInternalLinkSuggestions.
+- Files changed: frontend/src/services/gemini.ts, frontend/src/components/detail/ContextualEditor.tsx
+- **Learnings for future iterations:**
+  - Removed all VITE_GEMINI_API_KEY and VITE_GEMINI_MODEL env var usage from frontend
+  - getInternalLinkSuggestions now accepts optional accessToken as 6th parameter
+  - Backend /ai/suggest returns one {suggestion, reasoning} per call; frontend calls it for up to 5 target pages using Promise.allSettled
+  - Anchor text extracted from target URL path as fallback when not in suggestion
+  - Free user gate is in handleGetSuggestions (shows Pro modal) - no API call made for free users
+  - ContextualEditor destructures accessToken from useAuth() alongside user
+---
+
 ## 2026-02-18 - US-019
 - What was implemented: Login page was already fully implemented in a prior iteration (US-017). Verified all acceptance criteria are met and build passes.
 - Files changed: ralph/prd.json (marked passes: true)
