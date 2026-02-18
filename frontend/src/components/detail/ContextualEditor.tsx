@@ -7,6 +7,8 @@ import { DetailHeader } from './DetailHeader';
 import { ArticlePreview } from './ArticlePreview';
 import { ActionPanel } from './ActionPanel';
 import { getInternalLinkSuggestions } from '../../services/gemini';
+import { useAuth } from '../../contexts/AuthContext';
+import { Link } from 'react-router-dom';
 
 interface ContextualEditorProps {
   pageData: AnalyzeResponse;
@@ -23,6 +25,10 @@ export function ContextualEditor({
   targetPages,
   onBack
 }: ContextualEditorProps) {
+  const { user } = useAuth();
+  const isFree = !user || user.plan === 'free';
+  const [showAiProModal, setShowAiProModal] = useState(false);
+
   // Raw suggestions from AI
   const [suggestions, setSuggestions] = useState<LinkSuggestion[]>([]);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
@@ -60,16 +66,20 @@ export function ContextualEditor({
     acceptedCount
   } = useSuggestionState(suggestions, highlights, unmatchedSuggestions);
 
-  // Auto-fetch suggestions on mount if page needs links
+  // Auto-fetch suggestions on mount if page needs links (Pro only)
   useEffect(() => {
     const needsLinks = pageData.internal_links.to_target_pages === 0 || pageData.link_density > 500;
-    if (needsLinks && suggestions.length === 0 && !isLoadingSuggestions) {
+    if (!isFree && needsLinks && suggestions.length === 0 && !isLoadingSuggestions) {
       handleGetSuggestions();
     }
   }, []); // Only on mount
 
   // Fetch AI suggestions
   const handleGetSuggestions = useCallback(async () => {
+    if (isFree) {
+      setShowAiProModal(true);
+      return;
+    }
     setIsLoadingSuggestions(true);
     setSuggestionsError(null);
 
@@ -88,7 +98,7 @@ export function ContextualEditor({
     } finally {
       setIsLoadingSuggestions(false);
     }
-  }, [pageData, targetPages, filterTargetUrl, filterKeyword, filterMatchType]);
+  }, [isFree, pageData, targetPages, filterTargetUrl, filterKeyword, filterMatchType]);
 
   // Clear filters
   const handleClearFilters = useCallback(() => {
@@ -187,6 +197,46 @@ export function ContextualEditor({
 
   return (
     <div className="contextual-editor">
+      {showAiProModal && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999,
+        }}>
+          <div style={{
+            background: '#1e293b', borderRadius: '12px', padding: '32px',
+            maxWidth: '400px', width: '90%', border: '1px solid #334155', textAlign: 'center',
+          }}>
+            <div style={{ fontSize: '2rem', marginBottom: '12px' }}>🤖</div>
+            <h2 style={{ color: '#e2e8f0', fontSize: '1.25rem', fontWeight: 700, margin: '0 0 8px' }}>
+              AI Suggestions is a Pro feature
+            </h2>
+            <p style={{ color: '#94a3b8', fontSize: '0.875rem', margin: '0 0 24px' }}>
+              Upgrade to Pro to get AI-powered link suggestions, 500 URLs/scan, and unlimited saved sessions.
+            </p>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+              <Link
+                to="/pricing"
+                style={{
+                  padding: '8px 20px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  borderRadius: '6px', color: 'white', textDecoration: 'none', fontWeight: 600, fontSize: '0.875rem',
+                }}
+              >
+                Upgrade to Pro
+              </Link>
+              <button
+                onClick={() => setShowAiProModal(false)}
+                style={{
+                  padding: '8px 20px', background: 'transparent', border: '1px solid #475569',
+                  borderRadius: '6px', color: '#94a3b8', cursor: 'pointer', fontSize: '0.875rem',
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <DetailHeader
         title={pageData.title}
         url={pageData.url}

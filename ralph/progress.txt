@@ -138,6 +138,20 @@ Started: Wed Feb 18 21:17:15 GMT 2026
   - fetchMe() is memoized with useCallback to avoid re-rendering loops in useEffect
 ---
 
+## 2026-02-18 - US-025
+- What was implemented: Added in-app upgrade prompts for Free users hitting plan limits in App.tsx and ContextualEditor.tsx
+- Files changed: frontend/src/App.tsx, frontend/src/components/detail/ContextualEditor.tsx
+- **Learnings for future iterations:**
+  - isFree check: `const isFree = !user || user.plan === 'free'` (covers logged-out users too)
+  - URL limit banner shown inline in 'select' step when isFree && selectedUrls.size > 10
+  - Save Session button replaced with lock Link to /pricing for free users
+  - Sessions header button shows lock icon for free users, links to /pricing
+  - AI suggestions gate: handleGetSuggestions shows Pro modal instead of calling API for free users
+  - Auto-fetch on mount also gated: only runs if !isFree
+  - Pro upgrade modal is a fixed overlay with dismiss button
+  - Used Link from react-router-dom for internal navigation (not window.location.href)
+---
+
 ## 2026-02-18 - US-024
 - What was implemented: Enhanced Account.tsx with creation date, AI usage progress bar, and Manage Billing button. Updated AuthContext User interface to include created_at field.
 - Files changed: frontend/src/pages/Account.tsx, frontend/src/contexts/AuthContext.tsx

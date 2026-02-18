@@ -17,6 +17,8 @@ import { SavedLinksPanel } from './components/SavedLinksPanel';
 import { GuideModal } from './components/GuideModal';
 import { getSavedLinks } from './services/storage';
 import { Tooltip, TooltipIcon } from './components/Tooltip';
+import { useAuth } from './contexts/AuthContext';
+import { Link } from 'react-router-dom';
 import './App.css';
 
 type Step = 'setup' | 'select' | 'results' | 'detail';
@@ -29,6 +31,9 @@ const STEPS: { key: Step; label: string; num: number }[] = [
 ];
 
 function App() {
+  const { user } = useAuth();
+  const isFree = !user || user.plan === 'free';
+
   const [step, setStep] = useState<Step>('setup');
   const [config, setConfig] = useState<ConfigResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -461,7 +466,13 @@ function App() {
               <span className="header-btn__text">Saved Links</span>
               {savedLinksCount > 0 && <span className="header-btn__badge">{savedLinksCount}</span>}
             </button>
-            {savedSessions.length > 0 && (
+            {isFree ? (
+              <Tooltip content="Saved sessions require a Pro subscription." position="bottom">
+                <Link to="/pricing" className="header-btn" style={{ textDecoration: 'none' }}>
+                  <span className="header-btn__text">🔒 Sessions</span>
+                </Link>
+              </Tooltip>
+            ) : savedSessions.length > 0 && (
               <button onClick={() => setShowSavedSessions(true)} className="header-btn">
                 <span className="header-btn__text">Sessions</span>
                 <span className="header-btn__badge">{savedSessions.length}</span>
@@ -643,6 +654,12 @@ function App() {
 
           {step === 'select' && (
             <section className="select">
+              {isFree && selectedUrls.size > 10 && (
+                <div className="error" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span>Free plan supports up to 10 URLs. Upgrade to Pro for 500 URLs.</span>
+                  <Link to="/pricing" style={{ color: 'inherit', fontWeight: 600, whiteSpace: 'nowrap', marginLeft: '12px' }}>Upgrade to Pro →</Link>
+                </div>
+              )}
               <div className="select-header">
                 <h2>Select Pages to Analyze</h2>
                 <p>
@@ -706,14 +723,26 @@ function App() {
                         {loading ? 'Refreshing...' : 'Refresh'}
                       </button>
                     </Tooltip>
-                    <Tooltip content="Save this analysis session to your browser for later access." position="bottom">
-                      <button
-                        onClick={handleSaveSession}
-                        className="save-btn"
-                      >
-                        {currentSessionId ? 'Update Saved' : 'Save Session'}
-                      </button>
-                    </Tooltip>
+                    {isFree ? (
+                      <Tooltip content="Sessions require a Pro subscription. Upgrade at /pricing." position="bottom">
+                        <Link
+                          to="/pricing"
+                          className="save-btn"
+                          style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                        >
+                          🔒 Save Session
+                        </Link>
+                      </Tooltip>
+                    ) : (
+                      <Tooltip content="Save this analysis session to your account for later access." position="bottom">
+                        <button
+                          onClick={handleSaveSession}
+                          className="save-btn"
+                        >
+                          {currentSessionId ? 'Update Saved' : 'Save Session'}
+                        </button>
+                      </Tooltip>
+                    )}
                   </div>
                 </div>
 
