@@ -138,6 +138,16 @@ Started: Wed Feb 18 21:17:15 GMT 2026
   - fetchMe() is memoized with useCallback to avoid re-rendering loops in useEffect
 ---
 
+## 2026-02-18 - US-020
+- What was implemented: Register page was already fully implemented in a prior iteration (US-017). Verified all acceptance criteria are met and build passes.
+- Files changed: ralph/prd.json (marked passes: true)
+- **Learnings for future iterations:**
+  - US-020 (Register page) was implemented alongside US-017 in a single prior iteration
+  - Register.tsx has: email/password/confirmPassword fields, real-time password strength indicator (4 checks), inline mismatch error, redirect to / on success, link to /login
+  - getPasswordStrength() helper checks: length>=10, hasLetter, hasNumber, hasSpecial
+  - Button disabled when passwordMismatch is true (prevents submission with mismatched passwords)
+---
+
 ## 2026-02-18 - US-019
 - What was implemented: Login page was already fully implemented in a prior iteration (US-017). Verified all acceptance criteria are met and build passes.
 - Files changed: ralph/prd.json (marked passes: true)
