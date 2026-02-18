@@ -138,6 +138,16 @@ Started: Wed Feb 18 21:17:15 GMT 2026
   - fetchMe() is memoized with useCallback to avoid re-rendering loops in useEffect
 ---
 
+## 2026-02-18 - US-021
+- What was implemented: ForgotPassword and ResetPassword pages were already implemented in a prior iteration (US-017). Verified all acceptance criteria are met and build passes.
+- Files changed: ralph/prd.json (marked passes: true)
+- **Learnings for future iterations:**
+  - ForgotPassword.tsx: always shows success message regardless of API response (prevents email enumeration)
+  - ResetPassword.tsx: reads token from URL query param using useSearchParams hook
+  - ResetPassword redirects to /login?reset=success on success (not just /login)
+  - ResetPassword shows invalid link message if no token in URL params
+---
+
 ## 2026-02-18 - US-020
 - What was implemented: Register page was already fully implemented in a prior iteration (US-017). Verified all acceptance criteria are met and build passes.
 - Files changed: ralph/prd.json (marked passes: true)
