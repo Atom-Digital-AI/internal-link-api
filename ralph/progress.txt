@@ -100,3 +100,15 @@ Started: Wed Feb 18 21:17:15 GMT 2026
   - AI usage resets monthly based on period_end check
   - Bulk delete uses SQLAlchemy delete() with .in_() for efficient batch operations
 ---
+
+## 2026-02-18 22:15 - US-016
+- What was implemented: Updated main.py with all new routers, SlowAPI middleware, CORS from env var
+- Files changed: main.py, auth/router.py (fixed /user/me dependency)
+- **Learnings for future iterations:**
+  - Import get_current_user directly in auth/router.py - no circular import
+  - slowapi: app.state.limiter = limiter; app.add_exception_handler(RateLimitExceeded, ...)
+  - ALLOWED_ORIGINS env var: comma-separated list of origins
+  - billing/webhook is included normally since Stripe signature verification is in the endpoint itself
+  - Rate limit for /auth/login goes in the route decorator: @limiter.limit("10/15minutes")
+  - The _noop middleware was unnecessary, removed it
+---
