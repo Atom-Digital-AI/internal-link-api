@@ -7,6 +7,26 @@ USER_AGENT = "InternalLinkFinder/1.0 (SEO Analysis Tool)"
 SITEMAP_TIMEOUT = 30.0
 
 
+async def check_robots_txt(client: httpx.AsyncClient, domain: str) -> list[str]:
+    """
+    Fetch robots.txt and extract any Sitemap: directives.
+    Returns a list of declared sitemap URLs.
+    """
+    urls = []
+    try:
+        response = await client.get(f"{domain}/robots.txt")
+        if response.status_code == 200:
+            for line in response.text.splitlines():
+                stripped = line.strip()
+                if stripped.lower().startswith("sitemap:"):
+                    sitemap_url = stripped[8:].strip()
+                    if sitemap_url:
+                        urls.append(sitemap_url)
+    except httpx.RequestError:
+        pass
+    return urls
+
+
 async def fetch_sitemap(domain: str, source_pattern: str, target_pattern: str) -> dict:
     """
     Fetch and parse a site's sitemap to get all URLs.
@@ -24,11 +44,15 @@ async def fetch_sitemap(domain: str, source_pattern: str, target_pattern: str) -
         },
         follow_redirects=True,
     ) as client:
-        # Try common sitemap locations
-        sitemap_locations = [
+        # Check robots.txt first for declared sitemap URLs
+        robots_sitemaps = await check_robots_txt(client, domain)
+
+        # Try robots.txt declared URLs first, then common fallback locations
+        sitemap_locations = robots_sitemaps + [
             f"{domain}/sitemap.xml",
             f"{domain}/sitemap_index.xml",
             f"{domain}/sitemap-index.xml",
+            f"{domain}/wp-sitemap.xml",
             f"{domain}/sitemaps.xml",
         ]
 
