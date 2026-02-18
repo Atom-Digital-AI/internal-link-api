@@ -8,7 +8,7 @@ import type {
   TargetPageInfo,
   MatchType,
 } from './types';
-import { getConfig, getSitemap, analyzePage, fetchTargetPage } from './services/api';
+import { getConfig, getSitemap, analyzePage, fetchTargetPage, createSession as apiCreateSession, deleteSession as apiDeleteSession, getSessions as apiGetSessions } from './services/api';
 import { calculateKeywordRelevance, buildKeywordList } from './utils/keywordRelevance';
 import { getSavedSessions, saveSession, deleteSession, createSession } from './services/storage';
 import { ContextualEditor } from './components/detail';
@@ -31,7 +31,7 @@ const STEPS: { key: Step; label: string; num: number }[] = [
 ];
 
 function App() {
-  const { user } = useAuth();
+  const { user, accessToken } = useAuth();
   const isFree = !user || user.plan === 'free';
 
   const [step, setStep] = useState<Step>('setup');
@@ -84,9 +84,30 @@ function App() {
 
   useEffect(() => {
     getConfig().then(setConfig).catch(console.error);
-    setSavedSessions(getSavedSessions());
+    if (!isFree && accessToken) {
+      // Pro: load sessions from API
+      apiGetSessions(accessToken).then(cloudSessions => {
+        // Map cloud sessions to local SavedSession format for the existing UI
+        const mapped = cloudSessions.map(cs => ({
+          id: cs.id,
+          name: `${cs.domain} - ${new Date(cs.created_at).toLocaleDateString()}`,
+          createdAt: cs.created_at,
+          updatedAt: cs.updated_at,
+          domain: cs.domain,
+          sourcePattern: (cs.config as { sourcePattern?: string }).sourcePattern || '',
+          targetPattern: (cs.config as { targetPattern?: string }).targetPattern || '',
+          sourcePages: (cs.results as { sourcePages?: SavedSession['sourcePages'] }).sourcePages || [],
+          targetPages: (cs.results as { targetPages?: SavedSession['targetPages'] }).targetPages || [],
+          results: (cs.results as { results?: SavedSession['results'] }).results || [],
+          summary: (cs.results as { summary?: SavedSession['summary'] }).summary || { total_scanned: 0, needs_links: 0, has_good_density: 0, failed: 0 },
+        })) as SavedSession[];
+        setSavedSessions(mapped);
+      }).catch(() => setSavedSessions(getSavedSessions()));
+    } else {
+      setSavedSessions(getSavedSessions());
+    }
     setSavedLinksCount(getSavedLinks().length);
-  }, []);
+  }, [isFree, accessToken]);
 
   // Update saved links count when modal closes (links may have changed)
   useEffect(() => {
@@ -265,9 +286,39 @@ function App() {
     setSelectedUrls(new Set());
   };
 
-  const handleSaveSession = () => {
+  const handleSaveSession = async () => {
     if (!summary) return;
 
+    if (!isFree && accessToken) {
+      // Pro: save to cloud API
+      try {
+        const cloudSession = await apiCreateSession(accessToken, {
+          domain,
+          config: { sourcePattern, targetPattern },
+          results: { sourcePages, targetPages, results, summary },
+        });
+        const mapped: SavedSession = {
+          id: cloudSession.id,
+          name: `${domain} - ${new Date(cloudSession.created_at).toLocaleDateString()}`,
+          createdAt: cloudSession.created_at,
+          updatedAt: cloudSession.updated_at,
+          domain,
+          sourcePattern,
+          targetPattern,
+          sourcePages,
+          targetPages,
+          results,
+          summary,
+        };
+        setCurrentSessionId(mapped.id);
+        setSavedSessions(prev => [mapped, ...prev.filter(s => s.id !== mapped.id)]);
+      } catch (err) {
+        console.error('Failed to save session to cloud:', err);
+      }
+      return;
+    }
+
+    // Free: save to localStorage
     const session = currentSessionId
       ? {
           id: currentSessionId,
@@ -302,9 +353,18 @@ function App() {
     setStep('results');
   };
 
-  const handleDeleteSession = (id: string) => {
-    deleteSession(id);
-    setSavedSessions(getSavedSessions());
+  const handleDeleteSession = async (id: string) => {
+    if (!isFree && accessToken) {
+      try {
+        await apiDeleteSession(accessToken, id);
+        setSavedSessions(prev => prev.filter(s => s.id !== id));
+      } catch (err) {
+        console.error('Failed to delete session from cloud:', err);
+      }
+    } else {
+      deleteSession(id);
+      setSavedSessions(getSavedSessions());
+    }
     if (currentSessionId === id) {
       setCurrentSessionId(null);
     }

@@ -3,11 +3,17 @@ import type { SavedLink } from '../types';
 import {
   getSavedLinks,
   addSavedLink,
-  deleteSavedLink,
+  deleteSavedLink as localDeleteSavedLink,
   updateSavedLink,
   clearAllSavedLinks,
   exportSavedLinksToCsv,
 } from '../services/storage';
+import {
+  getSavedLinks as apiGetSavedLinks,
+  createSavedLink as apiCreateSavedLink,
+  deleteSavedLink as apiDeleteSavedLink,
+} from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
 type SaveLinkData = Omit<SavedLink, 'id' | 'savedAt' | 'domain' | 'isImplemented'>;
 
@@ -29,23 +35,53 @@ function generateLinkKey(sourceUrl: string, targetUrl: string, anchorText: strin
 }
 
 export function useSavedLinks(): UseSavedLinksReturn {
+  const { user, accessToken } = useAuth();
+  const isPro = user?.plan === 'pro';
+
   const [savedLinks, setSavedLinks] = useState<SavedLink[]>(() => getSavedLinks());
 
-  // Refresh links from localStorage
+  // Load links from the appropriate source based on plan
   const refreshLinks = useCallback(() => {
-    setSavedLinks(getSavedLinks());
-  }, []);
+    if (isPro && accessToken) {
+      apiGetSavedLinks(accessToken).then(cloudLinks => {
+        const mapped = cloudLinks.map(cl => {
+          const ld = cl.link_data as Record<string, unknown>;
+          return {
+            id: cl.id,
+            savedAt: cl.created_at,
+            sourceUrl: (ld.sourceUrl as string) || '',
+            sourceTitle: (ld.sourceTitle as string | null) || null,
+            targetUrl: (ld.targetUrl as string) || '',
+            anchorText: (ld.anchorText as string) || '',
+            reason: (ld.reason as string) || '',
+            sentence: (ld.sentence as string) || '',
+            domain: (ld.domain as string) || '',
+            isImplemented: (ld.isImplemented as boolean) || false,
+          } as SavedLink;
+        });
+        setSavedLinks(mapped);
+      }).catch(() => setSavedLinks(getSavedLinks()));
+    } else {
+      setSavedLinks(getSavedLinks());
+    }
+  }, [isPro, accessToken]);
 
-  // Listen for storage events from other tabs
+  // Load on mount and plan change
   useEffect(() => {
+    refreshLinks();
+  }, [refreshLinks]);
+
+  // Listen for localStorage changes (free users only)
+  useEffect(() => {
+    if (isPro) return;
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'internal-link-finder-saved-links') {
-        refreshLinks();
+        setSavedLinks(getSavedLinks());
       }
     };
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
-  }, [refreshLinks]);
+  }, [isPro]);
 
   // Set of saved link keys for O(1) duplicate lookup
   const savedKeys = useMemo(() => {
@@ -55,35 +91,60 @@ export function useSavedLinks(): UseSavedLinksReturn {
   }, [savedLinks]);
 
   const saveLink = useCallback((data: SaveLinkData) => {
-    const newLink = addSavedLink(data);
-    setSavedLinks(prev => [newLink, ...prev]);
-  }, []);
+    if (isPro && accessToken) {
+      let domain = '';
+      try { domain = new URL(data.sourceUrl).hostname; } catch { domain = data.sourceUrl; }
+      const linkData = { ...data, domain, isImplemented: false };
+      apiCreateSavedLink(accessToken, { link_data: linkData as Record<string, unknown> }).then(cl => {
+        const mapped: SavedLink = {
+          id: cl.id,
+          savedAt: cl.created_at,
+          ...linkData,
+        };
+        setSavedLinks(prev => [mapped, ...prev]);
+      }).catch(err => console.error('Failed to save link to cloud:', err));
+    } else {
+      const newLink = addSavedLink(data);
+      setSavedLinks(prev => [newLink, ...prev]);
+    }
+  }, [isPro, accessToken]);
 
   const deleteLink = useCallback((id: string) => {
-    deleteSavedLink(id);
-    setSavedLinks(prev => prev.filter(link => link.id !== id));
-  }, []);
+    if (isPro && accessToken) {
+      apiDeleteSavedLink(accessToken, id).then(() => {
+        setSavedLinks(prev => prev.filter(link => link.id !== id));
+      }).catch(err => console.error('Failed to delete link from cloud:', err));
+    } else {
+      localDeleteSavedLink(id);
+      setSavedLinks(prev => prev.filter(link => link.id !== id));
+    }
+  }, [isPro, accessToken]);
 
   const toggleImplemented = useCallback((id: string) => {
+    // Toggle implemented is localStorage-only for now (cloud doesn't track this)
     setSavedLinks(prev => {
       const link = prev.find(l => l.id === id);
       if (link) {
         const newValue = !link.isImplemented;
-        updateSavedLink(id, { isImplemented: newValue });
+        if (!isPro) {
+          updateSavedLink(id, { isImplemented: newValue });
+        }
         return prev.map(l => (l.id === id ? { ...l, isImplemented: newValue } : l));
       }
       return prev;
     });
-  }, []);
+  }, [isPro]);
 
   const clearAll = useCallback((domain?: string) => {
-    clearAllSavedLinks(domain);
+    if (!isPro) {
+      clearAllSavedLinks(domain);
+    }
     if (domain) {
       setSavedLinks(prev => prev.filter(link => link.domain !== domain));
     } else {
       setSavedLinks([]);
     }
-  }, []);
+  }, [isPro]);
 
   const isLinkSaved = useCallback(
     (sourceUrl: string, targetUrl: string, anchorText: string): boolean => {

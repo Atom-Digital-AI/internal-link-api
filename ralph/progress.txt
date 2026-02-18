@@ -138,6 +138,19 @@ Started: Wed Feb 18 21:17:15 GMT 2026
   - fetchMe() is memoized with useCallback to avoid re-rendering loops in useEffect
 ---
 
+## 2026-02-18 - US-026
+- What was implemented: Updated sessions (App.tsx) and saved links (useSavedLinks.ts) to use backend API for Pro users with localStorage fallback for Free users
+- Files changed: frontend/src/App.tsx, frontend/src/hooks/useSavedLinks.ts
+- **Learnings for future iterations:**
+  - App.tsx uses apiGetSessions/apiCreateSession/apiDeleteSession from api.ts for Pro, localStorage functions for Free
+  - useSavedLinks hook now reads isPro from useAuth() and switches between cloud/local storage
+  - Cloud SavedLink mapped: link_data JSONB contains all SavedLink fields including domain, isImplemented
+  - refreshLinks() is called on mount and when plan/token changes (via useEffect dependency)
+  - toggleImplemented is localStorage-only even for Pro (not persisted to cloud)
+  - clearAll for Pro only clears local state (no bulk delete API endpoint yet)
+  - Sessions mapped from cloud format: config has {sourcePattern, targetPattern}, results has {sourcePages, targetPages, results, summary}
+---
+
 ## 2026-02-18 - US-025
 - What was implemented: Added in-app upgrade prompts for Free users hitting plan limits in App.tsx and ContextualEditor.tsx
 - Files changed: frontend/src/App.tsx, frontend/src/components/detail/ContextualEditor.tsx
