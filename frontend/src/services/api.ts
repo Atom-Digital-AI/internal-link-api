@@ -151,7 +151,7 @@ export async function fetchTargetPage(url: string, token?: string | null): Promi
 export interface UserProfile {
   id: string;
   email: string;
-  plan: 'free' | 'pro';
+  plan: 'free' | 'starter' | 'pro';
   created_at: string;
 }
 
@@ -257,11 +257,20 @@ export async function getAiSuggestion(
 
 export async function createCheckoutSession(
   token: string | null,
-  interval: 'monthly' | 'annual'
+  interval: 'monthly' | 'annual',
+  plan: 'starter' | 'pro' = 'pro'
 ): Promise<CheckoutSessionResponse> {
   return fetchJson<CheckoutSessionResponse>(
     `${API_BASE}/billing/checkout`,
-    { method: 'POST', body: JSON.stringify({ interval }) },
+    { method: 'POST', body: JSON.stringify({ interval, plan }) },
+    token
+  );
+}
+
+export async function upgradeToPro(token: string | null): Promise<{ plan: string }> {
+  return fetchJson<{ plan: string }>(
+    `${API_BASE}/billing/upgrade`,
+    { method: 'POST' },
     token
   );
 }
@@ -272,4 +281,96 @@ export async function getBillingPortal(token: string | null): Promise<BillingPor
     undefined,
     token
   );
+}
+
+export async function cancelSubscription(token: string | null): Promise<{ current_period_end: string | null }> {
+  return fetchJson<{ current_period_end: string | null }>(
+    `${API_BASE}/billing/cancel`,
+    { method: 'POST' },
+    token
+  );
+}
+
+// ─── Account management ────────────────────────────────────────────────────
+
+export interface SubscriptionInfo {
+  has_subscription: boolean;
+  status: string | null;
+  current_period_end: string | null;
+  stripe_subscription_id: string | null;
+}
+
+export interface UsageInfo {
+  call_count: number;
+  period_end: string | null;
+  limit: number;
+}
+
+export async function getSubscription(token: string | null): Promise<SubscriptionInfo> {
+  return fetchJson<SubscriptionInfo>(`${API_BASE}/user/me/subscription`, undefined, token);
+}
+
+export async function getUsage(token: string | null): Promise<UsageInfo> {
+  return fetchJson<UsageInfo>(`${API_BASE}/user/me/usage`, undefined, token);
+}
+
+export async function updateEmail(
+  token: string | null,
+  newEmail: string,
+  currentPassword: string
+): Promise<UserProfile> {
+  return fetchJson<UserProfile>(
+    `${API_BASE}/user/me`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({ new_email: newEmail, current_password: currentPassword }),
+    },
+    token
+  );
+}
+
+export async function changePassword(
+  token: string | null,
+  currentPassword: string,
+  newPassword: string,
+  confirmPassword: string
+): Promise<void> {
+  await fetchJson<{ message: string }>(
+    `${API_BASE}/user/change-password`,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        current_password: currentPassword,
+        new_password: newPassword,
+        confirm_password: confirmPassword,
+      }),
+    },
+    token
+  );
+}
+
+// ─── Blog types ────────────────────────────────────────────────────────────
+
+export interface BlogPostSummary {
+  id: string
+  slug: string
+  title: string
+  excerpt: string | null
+  cover_image: string | null
+  published_at: string | null
+  created_at: string
+}
+
+export interface BlogPostDetail extends BlogPostSummary {
+  html_content: string
+}
+
+// ─── Blog API calls ─────────────────────────────────────────────────────────
+
+export async function fetchBlogPosts(): Promise<BlogPostSummary[]> {
+  return fetchJson<BlogPostSummary[]>(`${API_BASE}/blog/posts`)
+}
+
+export async function fetchBlogPost(slug: string): Promise<BlogPostDetail> {
+  return fetchJson<BlogPostDetail>(`${API_BASE}/blog/posts/${slug}`)
 }
