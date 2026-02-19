@@ -499,13 +499,16 @@ async def get_my_usage(
     result = await db.execute(select(AiUsage).where(AiUsage.user_id == current_user.id))
     ai_usage = result.scalar_one_or_none()
 
+    ai_limits = {"starter": 30, "pro": 200}
+    plan_limit = ai_limits.get(current_user.plan, 0)
+
     if ai_usage is None:
-        return UsageResponse(call_count=0, period_end=None, limit=200)
+        return UsageResponse(call_count=0, period_end=None, limit=plan_limit)
 
     return UsageResponse(
         call_count=ai_usage.call_count,
         period_end=ai_usage.period_end,
-        limit=200,
+        limit=plan_limit,
     )
 
 

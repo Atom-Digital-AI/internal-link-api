@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from billing.dependencies import require_pro
+from billing.dependencies import require_starter_or_pro
 from database import get_db
 from db_models import AiUsage, User
 
@@ -21,7 +21,7 @@ router = APIRouter(prefix="/ai", tags=["ai"])
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-1.5-flash")
-AI_MONTHLY_LIMIT = 200
+AI_MONTHLY_LIMITS = {"starter": 30, "pro": 200}
 
 
 # ---------------------------------------------------------------------------
@@ -85,15 +85,16 @@ async def _get_or_create_ai_usage(user: User, db: AsyncSession) -> AiUsage:
 async def ai_suggest(
     request_body: AiSuggestRequest,
     response: Response,
-    current_user: User = Depends(require_pro),
+    current_user: User = Depends(require_starter_or_pro),
     db: AsyncSession = Depends(get_db),
 ) -> AiSuggestResponse:
     ai_usage = await _get_or_create_ai_usage(current_user, db)
+    monthly_limit = AI_MONTHLY_LIMITS.get(current_user.plan, 30)
 
-    if ai_usage.call_count >= AI_MONTHLY_LIMIT:
+    if ai_usage.call_count >= monthly_limit:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Monthly AI limit of 200 calls reached",
+            detail=f"Monthly AI limit of {monthly_limit} calls reached",
         )
 
     # Build prompt
@@ -142,7 +143,7 @@ Respond in this exact JSON format:
     ai_usage.call_count += 1
     await db.flush()
 
-    remaining = max(0, AI_MONTHLY_LIMIT - ai_usage.call_count)
+    remaining = max(0, monthly_limit - ai_usage.call_count)
     response.headers["X-AI-Calls-Remaining"] = str(remaining)
 
     return AiSuggestResponse(suggestion=suggestion, reasoning=reasoning)
