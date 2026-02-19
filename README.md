@@ -1,6 +1,6 @@
 # Internal Link Finder
 
-A full-stack application for analyzing internal links on websites. Includes a FastAPI backend for page analysis and a React frontend with Gemini AI-powered link suggestions.
+A full-stack application for analyzing internal links on websites. Includes a FastAPI backend for page analysis and a React frontend with AI-powered link suggestions.
 
 ## Quick Start
 
@@ -30,7 +30,7 @@ internal-link-api/
     │   ├── types.ts     # TypeScript types
     │   └── services/
     │       ├── api.ts   # Backend API client
-    │       └── gemini.ts # Gemini AI integration
+    │       └── gemini.ts # AI integration
     ├── Dockerfile       # Production build
     └── Dockerfile.dev   # Development with hot reload
 ```
@@ -163,5 +163,5 @@ API configured for:
 - **Sitemap Parsing**: Fetches and parses XML sitemaps (including gzipped)
 - **Link Analysis**: Counts internal/external links, calculates link density
 - **Bulk Processing**: Analyze multiple pages with rate limiting
-- **AI Suggestions**: Gemini-powered recommendations for internal linking opportunities
+- **AI Suggestions**: AI-powered recommendations for internal linking opportunities
 - **Cost Protection**: Configurable URL limits to prevent excessive API usage

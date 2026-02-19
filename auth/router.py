@@ -3,6 +3,7 @@ import hashlib
 import os
 import secrets
 from datetime import datetime, timedelta, timezone
+from typing import Optional
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, EmailStr
@@ -19,7 +20,7 @@ from auth.utils import (
     verify_password,
 )
 from database import get_db
-from db_models import User
+from db_models import AiUsage, Subscription, User
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 user_router = APIRouter(prefix="/user", tags=["user"])
@@ -304,3 +305,173 @@ async def get_me(
         plan=current_user.plan,
         created_at=current_user.created_at,
     )
+
+
+# ---------------------------------------------------------------------------
+# GET /user/me/subscription
+# ---------------------------------------------------------------------------
+
+
+class SubscriptionResponse(BaseModel):
+    has_subscription: bool
+    status: Optional[str] = None
+    current_period_end: Optional[datetime] = None
+    stripe_subscription_id: Optional[str] = None
+
+
+@user_router.get("/me/subscription", response_model=SubscriptionResponse)
+async def get_my_subscription(
+    current_user: User = Depends(get_current_user_dep),
+    db: AsyncSession = Depends(get_db),
+) -> SubscriptionResponse:
+    """Get the current user's subscription details."""
+    result = await db.execute(
+        select(Subscription).where(Subscription.user_id == current_user.id)
+    )
+    subscription = result.scalars().first()
+
+    if subscription is None:
+        return SubscriptionResponse(has_subscription=False)
+
+    return SubscriptionResponse(
+        has_subscription=True,
+        status=subscription.status,
+        current_period_end=subscription.current_period_end,
+        stripe_subscription_id=subscription.stripe_subscription_id,
+    )
+
+
+# ---------------------------------------------------------------------------
+# GET /user/me/usage
+# ---------------------------------------------------------------------------
+
+
+class UsageResponse(BaseModel):
+    call_count: int
+    period_end: Optional[datetime] = None
+    limit: int
+
+
+@user_router.get("/me/usage", response_model=UsageResponse)
+async def get_my_usage(
+    current_user: User = Depends(get_current_user_dep),
+    db: AsyncSession = Depends(get_db),
+) -> UsageResponse:
+    """Get the current user's AI usage for the current billing period."""
+    result = await db.execute(select(AiUsage).where(AiUsage.user_id == current_user.id))
+    ai_usage = result.scalar_one_or_none()
+
+    if ai_usage is None:
+        return UsageResponse(call_count=0, period_end=None, limit=200)
+
+    return UsageResponse(
+        call_count=ai_usage.call_count,
+        period_end=ai_usage.period_end,
+        limit=200,
+    )
+
+
+# ---------------------------------------------------------------------------
+# PATCH /user/me — update email
+# ---------------------------------------------------------------------------
+
+
+class UpdateEmailRequest(BaseModel):
+    new_email: EmailStr
+    current_password: str  # Required to confirm identity before changing email
+
+
+@user_router.patch("/me", response_model=UserMeResponse)
+async def update_email(
+    request_body: UpdateEmailRequest,
+    current_user: User = Depends(get_current_user_dep),
+    db: AsyncSession = Depends(get_db),
+) -> UserMeResponse:
+    """Update the authenticated user's email address.
+
+    Requires current password verification to prevent account takeover
+    if a session token is somehow compromised.
+    """
+    if not verify_password(request_body.current_password, current_user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Current password is incorrect.",
+        )
+
+    new_email = str(request_body.new_email).lower()
+
+    if new_email == current_user.email.lower():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New email is the same as your current email.",
+        )
+
+    # Check no other account already uses this email
+    existing = await db.execute(select(User).where(User.email == new_email))
+    if existing.scalar_one_or_none() is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="An account with this email already exists.",
+        )
+
+    current_user.email = new_email
+    await db.flush()
+    await db.refresh(current_user)
+
+    return UserMeResponse(
+        id=str(current_user.id),
+        email=current_user.email,
+        plan=current_user.plan,
+        created_at=current_user.created_at,
+    )
+
+
+# ---------------------------------------------------------------------------
+# POST /user/change-password
+# ---------------------------------------------------------------------------
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+    confirm_password: str
+
+
+@user_router.post("/change-password", status_code=status.HTTP_200_OK)
+async def change_password(
+    request_body: ChangePasswordRequest,
+    current_user: User = Depends(get_current_user_dep),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Change the authenticated user's password.
+
+    Requires the current password to prevent unauthorised password changes
+    in the event of a stolen session token.
+    """
+    if request_body.new_password != request_body.confirm_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New passwords do not match.",
+        )
+
+    if not verify_password(request_body.current_password, current_user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Current password is incorrect.",
+        )
+
+    if request_body.current_password == request_body.new_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New password must be different from your current password.",
+        )
+
+    try:
+        validate_password_strength(request_body.new_password)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+    current_user.password_hash = hash_password(request_body.new_password)
+    await db.flush()
+
+    return {"message": "Password changed successfully."}

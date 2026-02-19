@@ -15,6 +15,7 @@ import Privacy from './pages/Privacy'
 import Terms from './pages/Terms'
 import BlogList from './pages/BlogList'
 import BlogPost from './pages/BlogPost'
+import VsPage from './pages/VsPage'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth()
@@ -65,6 +66,7 @@ export default function AppRouter() {
           </ProtectedRoute>
         }
       />
+      <Route path="/linki-vs-:slug" element={<VsPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

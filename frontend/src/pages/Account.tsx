@@ -3,6 +3,8 @@ import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import {
   getBillingPortal,
+  cancelSubscription,
+  upgradeToPro,
   getSubscription,
   getUsage,
   updateEmail,
@@ -236,7 +238,7 @@ function AccountDetailsCard() {
           display: 'inline-block',
           padding: '2px 12px',
           borderRadius: 'var(--radius-full)',
-          background: user?.plan === 'pro' ? '#0071E3' : '#6E6E73',
+          background: user?.plan === 'pro' ? '#0071E3' : user?.plan === 'starter' ? '#34C759' : '#6E6E73',
           color: 'white',
           fontSize: 'var(--text-sm)',
           fontWeight: 600,
@@ -358,26 +360,41 @@ function SubscriptionCard({
   usage,
   onManageBilling,
   billingLoading,
+  onCancelSubscription,
+  cancelLoading,
+  isCancellationPending,
+  onUpgradeToPro,
+  upgradeLoading,
 }: {
   subscription: SubscriptionInfo | null
   usage: UsageInfo | null
   onManageBilling: () => void
   billingLoading: boolean
+  onCancelSubscription: () => Promise<void>
+  cancelLoading: boolean
+  isCancellationPending: boolean
+  onUpgradeToPro: () => Promise<void>
+  upgradeLoading: boolean
 }) {
   const { user } = useAuth()
   const isPro = user?.plan === 'pro'
+  const isStarter = user?.plan === 'starter'
 
   const renewalDate = subscription?.current_period_end
     ? new Date(subscription.current_period_end).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
     : null
 
-  const statusLabel = subscription?.status
+  const statusLabel = subscription?.status === 'pending_cancellation'
+    ? 'Cancellation scheduled'
+    : subscription?.status
     ? subscription.status.charAt(0).toUpperCase() + subscription.status.slice(1)
     : null
 
   const statusColor = subscription?.status === 'active'
     ? 'var(--color-success-text)'
     : subscription?.status === 'past_due'
+    ? 'var(--color-warning-text)'
+    : subscription?.status === 'pending_cancellation'
     ? 'var(--color-warning-text)'
     : '#6E6E73'
 
@@ -389,7 +406,7 @@ function SubscriptionCard({
   const aiPercentage = Math.min((aiCallCount / aiLimit) * 100, 100)
   const aiNearLimit = aiCallCount >= Math.floor(aiLimit * 0.9)
 
-  if (!isPro) {
+  if (!isPro && !isStarter) {
     return (
       <div style={card}>
         <p style={sectionTitle}>Subscription</p>
@@ -466,17 +483,62 @@ function SubscriptionCard({
         </div>
       </div>
 
-      <div>
-        <button
-          onClick={onManageBilling}
-          disabled={billingLoading}
-          style={{ ...accentBtn, opacity: billingLoading ? 0.7 : 1, cursor: billingLoading ? 'not-allowed' : 'pointer' }}
-        >
-          {billingLoading ? 'Loading…' : 'Manage billing'}
-        </button>
-        <p style={{ ...inlineMeta, marginTop: 'var(--sp-2)' }}>
-          Update payment method, download invoices, or cancel your subscription via Stripe.
-        </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
+        {isStarter && (
+          <div>
+            <button
+              onClick={onUpgradeToPro}
+              disabled={upgradeLoading}
+              style={{ ...primaryBtn, opacity: upgradeLoading ? 0.7 : 1, cursor: upgradeLoading ? 'not-allowed' : 'pointer' }}
+            >
+              {upgradeLoading ? 'Upgrading…' : 'Upgrade to Pro'}
+            </button>
+            <p style={{ ...inlineMeta, marginTop: 'var(--sp-2)' }}>
+              Unlock 200 AI suggestions, 500 URL scans, and saved sessions. Prorated charge applies.
+            </p>
+          </div>
+        )}
+
+        <div>
+          <button
+            onClick={onManageBilling}
+            disabled={billingLoading}
+            style={{ ...accentBtn, opacity: billingLoading ? 0.7 : 1, cursor: billingLoading ? 'not-allowed' : 'pointer' }}
+          >
+            {billingLoading ? 'Loading…' : 'Manage billing'}
+          </button>
+          <p style={{ ...inlineMeta, marginTop: 'var(--sp-2)' }}>
+            Update payment method or download invoices.
+          </p>
+        </div>
+
+        {subscription?.status === 'active' && (
+          <div>
+            <button
+              onClick={onCancelSubscription}
+              disabled={cancelLoading}
+              style={{
+                padding: 'var(--sp-2) var(--sp-5)',
+                background: 'transparent',
+                border: '1px solid var(--color-danger-border)',
+                borderRadius: 'var(--radius-md)',
+                color: 'var(--color-danger-text)',
+                fontSize: 'var(--text-sm)',
+                fontWeight: 600,
+                cursor: cancelLoading ? 'not-allowed' : 'pointer',
+                opacity: cancelLoading ? 0.7 : 1,
+              }}
+            >
+              {cancelLoading ? 'Cancelling…' : 'Cancel subscription'}
+            </button>
+          </div>
+        )}
+
+        {isCancellationPending && (
+          <p style={{ ...inlineMeta, color: 'var(--color-warning-text)' }}>
+            Cancellation scheduled — your access continues until the date shown above.
+          </p>
+        )}
       </div>
     </div>
   )
@@ -490,6 +552,8 @@ export default function Account() {
   const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null)
   const [usage, setUsage] = useState<UsageInfo | null>(null)
   const [billingLoading, setBillingLoading] = useState(false)
+  const [cancelLoading, setCancelLoading] = useState(false)
+  const [upgradeLoading, setUpgradeLoading] = useState(false)
 
   // Check URL for success param (from Stripe checkout redirect)
   const params = new URLSearchParams(window.location.search)
@@ -502,7 +566,7 @@ export default function Account() {
       .then(data => setSubscription(data))
       .catch(() => null)
 
-    if (user?.plan === 'pro') {
+    if (user?.plan === 'pro' || user?.plan === 'starter') {
       getUsage(accessToken)
         .then(data => setUsage(data))
         .catch(() => null)
@@ -523,6 +587,36 @@ export default function Account() {
       navigate('/pricing')
     } finally {
       setBillingLoading(false)
+    }
+  }
+
+  const handleUpgradeToPro = async () => {
+    setUpgradeLoading(true)
+    try {
+      await upgradeToPro(accessToken)
+      window.location.href = '/account?success=true'
+    } catch {
+      // silently ignore — stay on page
+    } finally {
+      setUpgradeLoading(false)
+    }
+  }
+
+  const handleCancelSubscription = async () => {
+    if (!window.confirm('Are you sure you want to cancel your Pro subscription? You will keep access until the end of the current billing period.')) return
+    setCancelLoading(true)
+    try {
+      const data = await cancelSubscription(accessToken)
+      // Update local subscription state to reflect pending cancellation
+      setSubscription(prev => prev ? {
+        ...prev,
+        status: 'pending_cancellation',
+        current_period_end: data.current_period_end ?? prev.current_period_end,
+      } : prev)
+    } catch {
+      // silently ignore — user stays on same state
+    } finally {
+      setCancelLoading(false)
     }
   }
 
@@ -559,7 +653,7 @@ export default function Account() {
 
         {/* Upgrade success banner */}
         {justUpgraded && (
-          <SuccessBanner message="You're now on Pro! All features are unlocked." />
+          <SuccessBanner message={user?.plan === 'starter' ? "You're now on Starter! AI features are unlocked." : "You're now on Pro! All features are unlocked."} />
         )}
 
         <AccountDetailsCard />
@@ -569,6 +663,11 @@ export default function Account() {
           usage={usage}
           onManageBilling={handleManageBilling}
           billingLoading={billingLoading}
+          onCancelSubscription={handleCancelSubscription}
+          cancelLoading={cancelLoading}
+          isCancellationPending={subscription?.status === 'pending_cancellation'}
+          onUpgradeToPro={handleUpgradeToPro}
+          upgradeLoading={upgradeLoading}
         />
 
         {/* Sign out */}

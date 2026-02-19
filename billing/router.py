@@ -18,8 +18,8 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/billing", tags=["billing"])
 
 STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")
+STRIPE_STARTER_MONTHLY_PRICE_ID = os.environ.get("STRIPE_STARTER_MONTHLY_PRICE_ID", "")
 STRIPE_PRO_MONTHLY_PRICE_ID = os.environ.get("STRIPE_PRO_MONTHLY_PRICE_ID", "")
-STRIPE_PRO_ANNUAL_PRICE_ID = os.environ.get("STRIPE_PRO_ANNUAL_PRICE_ID", "")
 STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
 
@@ -36,7 +36,7 @@ def _stripe() -> stripe.Stripe:
 
 
 class CheckoutRequest(BaseModel):
-    interval: str  # "monthly" | "annual"
+    plan: str = "pro"   # "starter" | "pro"
 
 
 class CheckoutResponse(BaseModel):
@@ -49,18 +49,16 @@ async def create_checkout_session(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> CheckoutResponse:
-    if request_body.interval not in ("monthly", "annual"):
+    if request_body.plan not in ("starter", "pro"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="interval must be 'monthly' or 'annual'.",
+            detail="plan must be 'starter' or 'pro'.",
         )
-
     _stripe()
-    price_id = (
-        STRIPE_PRO_MONTHLY_PRICE_ID
-        if request_body.interval == "monthly"
-        else STRIPE_PRO_ANNUAL_PRICE_ID
-    )
+    if request_body.plan == "starter":
+        price_id = STRIPE_STARTER_MONTHLY_PRICE_ID
+    else:
+        price_id = STRIPE_PRO_MONTHLY_PRICE_ID
 
     # Find or create Stripe customer
     stripe_customer_id = None
@@ -82,7 +80,7 @@ async def create_checkout_session(
         mode="subscription",
         success_url=f"{FRONTEND_URL}/account?success=true",
         cancel_url=f"{FRONTEND_URL}/pricing",
-        metadata={"user_id": str(current_user.id)},
+        metadata={"user_id": str(current_user.id), "plan": request_body.plan},
     )
 
     return CheckoutResponse(url=checkout_session.url)
@@ -121,6 +119,126 @@ async def get_billing_portal(
     )
 
     return PortalResponse(url=portal_session.url)
+
+
+# ---------------------------------------------------------------------------
+# POST /billing/cancel
+# ---------------------------------------------------------------------------
+
+
+class CancelResponse(BaseModel):
+    current_period_end: datetime | None
+
+
+@router.post("/cancel", response_model=CancelResponse)
+async def cancel_subscription(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> CancelResponse:
+    """Cancel the subscription at period end. User keeps Pro access until current_period_end."""
+    _stripe()
+
+    sub_result = await db.execute(
+        select(Subscription).where(Subscription.user_id == current_user.id)
+    )
+    subscription = sub_result.scalars().first()
+
+    if not subscription or not subscription.stripe_subscription_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No active subscription found.",
+        )
+
+    if subscription.status not in ("active",):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Subscription is not active.",
+        )
+
+    try:
+        stripe_sub = stripe.Subscription.modify(
+            subscription.stripe_subscription_id,
+            cancel_at_period_end=True,
+        )
+        current_period_end_ts = stripe_sub.get("current_period_end")
+        current_period_end = (
+            datetime.fromtimestamp(current_period_end_ts, tz=timezone.utc)
+            if current_period_end_ts
+            else None
+        )
+    except Exception as e:
+        logger.error("Stripe cancel error for user %s: %s", current_user.id, e)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Failed to cancel subscription: {str(e)}",
+        )
+
+    subscription.status = "pending_cancellation"
+    subscription.current_period_end = current_period_end
+    await db.flush()
+
+    return CancelResponse(current_period_end=current_period_end)
+
+
+# ---------------------------------------------------------------------------
+# POST /billing/upgrade  (Starter → Pro)
+# ---------------------------------------------------------------------------
+
+
+class UpgradeResponse(BaseModel):
+    plan: str
+
+
+@router.post("/upgrade", response_model=UpgradeResponse)
+async def upgrade_to_pro(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> UpgradeResponse:
+    """Upgrade a Starter subscriber to Pro using Stripe proration."""
+    if current_user.plan != "starter":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only Starter subscribers can upgrade via this endpoint.",
+        )
+
+    _stripe()
+
+    sub_result = await db.execute(
+        select(Subscription).where(Subscription.user_id == current_user.id)
+    )
+    subscription = sub_result.scalars().first()
+
+    if not subscription or not subscription.stripe_subscription_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No active Starter subscription found.",
+        )
+
+    if subscription.status not in ("active",):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Subscription is not active.",
+        )
+
+    try:
+        stripe_sub = stripe.Subscription.retrieve(subscription.stripe_subscription_id)
+        item_id = stripe_sub["items"]["data"][0]["id"]
+        stripe.Subscription.modify(
+            subscription.stripe_subscription_id,
+            items=[{"id": item_id, "price": STRIPE_PRO_MONTHLY_PRICE_ID}],
+            proration_behavior="always_invoice",
+        )
+    except Exception as e:
+        logger.error("Stripe upgrade error for user %s: %s", current_user.id, e)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Failed to upgrade subscription: {str(e)}",
+        )
+
+    current_user.plan = "pro"
+    await db.flush()
+
+    return UpgradeResponse(plan="pro")
 
 
 # ---------------------------------------------------------------------------
@@ -169,7 +287,9 @@ async def _handle_checkout_completed(data: dict, db: AsyncSession) -> None:
     customer_email = data.get("customer_email") or ""
     stripe_customer_id = data.get("customer", "")
     stripe_subscription_id = data.get("subscription", "")
-    user_id_meta = data.get("metadata", {}).get("user_id")
+    metadata = data.get("metadata", {})
+    user_id_meta = metadata.get("user_id")
+    plan_meta = metadata.get("plan", "pro")
 
     # Find user by metadata user_id or email
     user = None
@@ -217,7 +337,9 @@ async def _handle_checkout_completed(data: dict, db: AsyncSession) -> None:
         )
         db.add(subscription)
 
-    user.plan = "pro"
+    # Determine plan from metadata; fall back to price ID comparison if needed
+    new_plan = "starter" if plan_meta == "starter" else "pro"
+    user.plan = new_plan
     await db.flush()
 
     # Send confirmation email
@@ -225,7 +347,7 @@ async def _handle_checkout_completed(data: dict, db: AsyncSession) -> None:
         from email_service import send_subscription_confirmation_email
 
         renewal_str = current_period_end.strftime("%B %d, %Y") if current_period_end else "N/A"
-        send_subscription_confirmation_email(user.email, "pro", renewal_str)
+        send_subscription_confirmation_email(user.email, new_plan, renewal_str)
     except Exception as e:
         logger.error("Failed to send subscription confirmation email: %s", e)
 
@@ -282,9 +404,11 @@ async def _handle_subscription_deleted(data: dict, db: AsyncSession) -> None:
         if current_period_end < now:
             if user:
                 user.plan = "free"
+                user.downgraded_at = datetime.now(timezone.utc)
     else:
         if user:
             user.plan = "free"
+            user.downgraded_at = datetime.now(timezone.utc)
 
     await db.flush()
 

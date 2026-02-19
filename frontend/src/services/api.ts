@@ -257,12 +257,11 @@ export async function getAiSuggestion(
 
 export async function createCheckoutSession(
   token: string | null,
-  interval: 'monthly' | 'annual',
   plan: 'starter' | 'pro' = 'pro'
 ): Promise<CheckoutSessionResponse> {
   return fetchJson<CheckoutSessionResponse>(
     `${API_BASE}/billing/checkout`,
-    { method: 'POST', body: JSON.stringify({ interval, plan }) },
+    { method: 'POST', body: JSON.stringify({ plan }) },
     token
   );
 }

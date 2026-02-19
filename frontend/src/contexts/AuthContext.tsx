@@ -5,7 +5,7 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
 interface User {
   id: string
   email: string
-  plan: 'free' | 'pro'
+  plan: 'free' | 'starter' | 'pro'
   created_at: string
 }
 
@@ -17,6 +17,7 @@ interface AuthContextValue {
   logout: () => Promise<void>
   register: (email: string, password: string, confirmPassword: string) => Promise<void>
   setAccessToken: (token: string | null) => void
+  refreshUser: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -118,9 +119,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [fetchMe]
   )
 
+  const refreshUser = useCallback(async () => {
+    if (accessToken) {
+      const me = await fetchMe(accessToken)
+      setUser(me)
+    }
+  }, [accessToken, fetchMe])
+
   return (
     <AuthContext.Provider
-      value={{ user, accessToken, isLoading, login, logout, register, setAccessToken }}
+      value={{ user, accessToken, isLoading, login, logout, register, setAccessToken, refreshUser }}
     >
       {children}
     </AuthContext.Provider>

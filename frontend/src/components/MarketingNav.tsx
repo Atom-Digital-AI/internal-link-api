@@ -1,8 +1,11 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
 import linkiLogo from "../../media/images/logos/Linki Logo - No Spacing - Transparent.png";
 
 export default function MarketingNav() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -115,35 +118,75 @@ export default function MarketingNav() {
             gap: "12px",
           }}
         >
-          <Link
-            to="/login"
-            style={{
-              border: "1.5px solid rgba(0,0,0,0.15)",
-              borderRadius: "980px",
-              padding: "8px 20px",
-              color: "#1D1D1F",
-              background: "transparent",
-              fontSize: "0.875rem",
-              fontWeight: 500,
-              textDecoration: "none",
-            }}
-          >
-            Sign in
-          </Link>
-          <Link
-            to="/register"
-            style={{
-              background: "#0071E3",
-              color: "white",
-              borderRadius: "980px",
-              padding: "8px 20px",
-              fontSize: "0.875rem",
-              fontWeight: 600,
-              textDecoration: "none",
-            }}
-          >
-            Get started free
-          </Link>
+          {user ? (
+            <>
+              <Link
+                to="/app"
+                style={{
+                  border: "1.5px solid rgba(0,0,0,0.15)",
+                  borderRadius: "980px",
+                  padding: "8px 20px",
+                  color: "#1D1D1F",
+                  background: "transparent",
+                  fontSize: "0.875rem",
+                  fontWeight: 500,
+                  textDecoration: "none",
+                }}
+              >
+                Go to App
+              </Link>
+              <button
+                onClick={async () => {
+                  await logout();
+                  navigate("/login");
+                }}
+                style={{
+                  border: "1.5px solid rgba(0,0,0,0.15)",
+                  borderRadius: "980px",
+                  padding: "8px 20px",
+                  color: "#1D1D1F",
+                  background: "transparent",
+                  fontSize: "0.875rem",
+                  fontWeight: 500,
+                  cursor: "pointer",
+                }}
+              >
+                Sign out
+              </button>
+            </>
+          ) : (
+            <>
+              <Link
+                to="/login"
+                style={{
+                  border: "1.5px solid rgba(0,0,0,0.15)",
+                  borderRadius: "980px",
+                  padding: "8px 20px",
+                  color: "#1D1D1F",
+                  background: "transparent",
+                  fontSize: "0.875rem",
+                  fontWeight: 500,
+                  textDecoration: "none",
+                }}
+              >
+                Sign in
+              </Link>
+              <Link
+                to="/register"
+                style={{
+                  background: "#0071E3",
+                  color: "white",
+                  borderRadius: "980px",
+                  padding: "8px 20px",
+                  fontSize: "0.875rem",
+                  fontWeight: 600,
+                  textDecoration: "none",
+                }}
+              >
+                Get started free
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </header>

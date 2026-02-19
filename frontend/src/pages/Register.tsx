@@ -34,7 +34,7 @@ export default function Register() {
     setLoading(true)
     try {
       await register(email, password, confirmPassword)
-      navigate('/')
+      navigate('/app')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed.')
     } finally {
@@ -130,13 +130,7 @@ export default function Register() {
               <input
                 type="password"
                 value={password}
-                onChange={e => {
-                  setPassword(e.target.value)
-                  // Keep confirm in sync when Chrome autofill fills both fields simultaneously
-                  if (confirmPassword.length === 0 || e.target.value === confirmPassword) {
-                    setConfirmPassword(e.target.value)
-                  }
-                }}
+                onChange={e => setPassword(e.target.value)}
                 required
                 autoComplete="new-password"
                 placeholder="••••••••"

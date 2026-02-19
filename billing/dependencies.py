@@ -7,11 +7,22 @@ from auth.dependencies import get_current_user
 from database import get_db
 from db_models import AiUsage, User
 
+_AI_LIMITS = {
+    "starter": 30,
+    "pro": 200,
+}
+
+_URL_LIMITS = {
+    "free": 10,
+    "starter": 50,
+    "pro": 500,
+}
+
 
 async def require_pro(current_user: User = Depends(get_current_user)) -> User:
     """Require the user to have an active Pro subscription.
 
-    Raises HTTPException 403 if user is on the Free plan.
+    Raises HTTPException 403 if user is on the Free or Starter plan.
     """
     if current_user.plan != "pro":
         raise HTTPException(
@@ -21,15 +32,29 @@ async def require_pro(current_user: User = Depends(get_current_user)) -> User:
     return current_user
 
 
+async def require_starter_or_pro(current_user: User = Depends(get_current_user)) -> User:
+    """Require the user to have at least a Starter subscription.
+
+    Raises HTTPException 403 if user is on the Free plan.
+    """
+    if current_user.plan not in ("starter", "pro"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This feature requires a Starter or Pro subscription. Upgrade at /pricing",
+        )
+    return current_user
+
+
 def check_bulk_url_limit(url_count: int, user: User) -> None:
     """Check if the user is within their plan's URL limit.
 
-    Raises HTTPException 403 if a Free user tries to scan more than 10 URLs.
+    Raises HTTPException 403 if the user tries to scan more URLs than their plan allows.
     """
-    if user.plan == "free" and url_count > 10:
+    limit = _URL_LIMITS.get(user.plan, 10)
+    if url_count > limit:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Free plan supports up to 10 URLs. Upgrade to Pro for up to 500 URLs",
+            detail=f"Your plan supports up to {limit} URLs per scan. Upgrade at /pricing",
         )
 
 
@@ -39,15 +64,22 @@ async def check_ai_usage(
 ) -> User:
     """Check if user has remaining AI calls this period.
 
-    Raises HTTPException 429 if the user has reached their monthly limit (200 calls).
+    Raises HTTPException 429 if the user has reached their monthly limit.
     """
+    limit = _AI_LIMITS.get(user.plan, 0)
+    if limit == 0:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="AI suggestions require a Starter or Pro subscription. Upgrade at /pricing",
+        )
+
     result = await db.execute(select(AiUsage).where(AiUsage.user_id == user.id))
     ai_usage = result.scalar_one_or_none()
 
-    if ai_usage is not None and ai_usage.call_count >= 200:
+    if ai_usage is not None and ai_usage.call_count >= limit:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Monthly AI limit of 200 calls reached",
+            detail=f"Monthly AI limit of {limit} calls reached",
         )
 
     return user

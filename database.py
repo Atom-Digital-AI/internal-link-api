@@ -25,10 +25,15 @@ _async_session_factory: Optional[async_sessionmaker] = None
 def _get_engine() -> AsyncEngine:
     global _engine
     if _engine is None:
+        url = _build_database_url()
+        connect_args: dict = {}
+        if "localhost" not in url and "127.0.0.1" not in url:
+            connect_args["ssl"] = True
         _engine = create_async_engine(
-            _build_database_url(),
+            url,
             echo=False,
             pool_pre_ping=True,
+            connect_args=connect_args,
         )
     return _engine
 

@@ -505,7 +505,7 @@ function App() {
       {/* ── DARK HEADER ── */}
       <header className="app-header">
         <div className="app-header__inner">
-          <Link to="/" className="app-header__brand">
+          <Link to="/app" className="app-header__brand">
             <div className="app-header__logo">
               <img src={linkiLogo} alt="" />
             </div>

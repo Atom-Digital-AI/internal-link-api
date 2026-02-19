@@ -1,4 +1,4 @@
-"""AI suggest router: Gemini proxy with usage tracking (Pro users only)."""
+"""AI suggest router: AI service proxy with usage tracking (Pro users only)."""
 import logging
 import os
 from calendar import monthrange
@@ -132,7 +132,7 @@ Respond in this exact JSON format:
         suggestion = parsed.get("suggestion", "")
         reasoning = parsed.get("reasoning", "")
     except Exception as e:
-        logger.error("Gemini API error for user %s: %s", current_user.id, e)
+        logger.error("AI service error for user %s: %s", current_user.id, e)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"AI service error: {str(e)}",

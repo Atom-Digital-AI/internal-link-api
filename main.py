@@ -1,15 +1,21 @@
 import asyncio
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from slowapi.util import get_remote_address
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from database import get_db
+from db_models import BlogPost
 
 from models import (
     AnalyzeRequest,
@@ -214,6 +220,83 @@ async def bulk_analyze(request: BulkAnalyzeRequest):
         ),
         target_page_info=target_page_info,
     )
+
+
+# ---------------------------------------------------------------------------
+# Sitemap
+# ---------------------------------------------------------------------------
+
+_STATIC_PAGES = [
+    {"loc": "/",          "changefreq": "weekly",  "priority": "1.0"},
+    {"loc": "/pricing",   "changefreq": "monthly", "priority": "0.9"},
+    {"loc": "/features",  "changefreq": "monthly", "priority": "0.8"},
+    {"loc": "/blog",      "changefreq": "weekly",  "priority": "0.8"},
+    {"loc": "/privacy",   "changefreq": "yearly",  "priority": "0.3"},
+    {"loc": "/terms",     "changefreq": "yearly",  "priority": "0.3"},
+]
+
+_VS_SLUGS = [
+    "link-whisper",
+    "linkstorm",
+    "inlinks",
+    "linkboss",
+    "seojuice",
+]
+
+
+def _url_entry(base: str, loc: str, lastmod: str | None = None,
+               changefreq: str = "monthly", priority: str = "0.7") -> str:
+    parts = [f"  <url>\n    <loc>{base}{loc}</loc>"]
+    if lastmod:
+        parts.append(f"    <lastmod>{lastmod}</lastmod>")
+    parts.append(f"    <changefreq>{changefreq}</changefreq>")
+    parts.append(f"    <priority>{priority}</priority>")
+    parts.append("  </url>")
+    return "\n".join(parts)
+
+
+@app.get("/sitemap.xml", include_in_schema=False)
+async def sitemap(db: AsyncSession = Depends(get_db)) -> Response:
+    base_url = os.environ.get("SITE_URL", "https://linki.tools").rstrip("/")
+    today = datetime.now(timezone.utc).date().isoformat()
+
+    entries: list[str] = []
+
+    # Static pages
+    for page in _STATIC_PAGES:
+        entries.append(_url_entry(base_url, page["loc"],
+                                  lastmod=today,
+                                  changefreq=page["changefreq"],
+                                  priority=page["priority"]))
+
+    # VS / comparison pages
+    for slug in _VS_SLUGS:
+        entries.append(_url_entry(base_url, f"/linki-vs-{slug}",
+                                  lastmod=today,
+                                  changefreq="monthly",
+                                  priority="0.7"))
+
+    # Blog posts
+    result = await db.execute(
+        select(BlogPost)
+        .where(BlogPost.published.is_(True))
+        .order_by(BlogPost.published_at.desc())
+    )
+    posts = result.scalars().all()
+    for post in posts:
+        lastmod = post.published_at.date().isoformat() if post.published_at else today
+        entries.append(_url_entry(base_url, f"/blog/{post.slug}",
+                                  lastmod=lastmod,
+                                  changefreq="monthly",
+                                  priority="0.8"))
+
+    xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        + "\n".join(entries)
+        + "\n</urlset>"
+    )
+    return Response(content=xml, media_type="application/xml")
 
 
 # Serve static frontend files if they exist (production build)

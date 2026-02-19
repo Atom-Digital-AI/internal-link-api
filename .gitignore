@@ -41,3 +41,24 @@ Thumbs.db
 
 # Local development
 *.log
+target-keywords.md
+feature_ideas.md
+competitor-analysis.*
+docs/plans/
+
+# Tooling
+.claude/
+.playwright-mcp/
+claude.md
+ralph/
+competitor_analysis.md
+competitor_analysis_summary.md
+competitor_analysis_summary_2026-02-19.md
+competitor_analysis_summary_2026-02-19.md
+gtm_tag_manager.md
+gtm_tag_manager_summary.md
+gtm_tag_manager_summary_2026-02-19.md
+gtm_tag_manager_summary_2026-02-19.md
+gtm.md
+# Environment variables
+.env

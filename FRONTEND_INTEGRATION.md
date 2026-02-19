@@ -2,7 +2,7 @@
 
 ## Overview
 
-This is a Python FastAPI backend that scrapes websites and analyzes internal links. Your React frontend should call this API to get structured data about pages, then use Gemini to generate recommendations.
+This is a Python FastAPI backend that scrapes websites and analyzes internal links. Your React frontend should call this API to get structured data about pages, then use AI to generate recommendations.
 
 **API Base URL (local):** `http://localhost:8000`
 **API Base URL (production):** Set after Railway deployment
