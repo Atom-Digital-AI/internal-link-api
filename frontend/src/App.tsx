@@ -8,11 +8,12 @@ import type {
   TargetPageInfo,
   MatchType,
 } from './types';
-import { getConfig, getSitemap, analyzePage, fetchTargetPage, createSession as apiCreateSession, deleteSession as apiDeleteSession, getSessions as apiGetSessions } from './services/api';
+import { getConfig, getSitemap, analyzePage, fetchTargetPage, createSession as apiCreateSession, deleteSession as apiDeleteSession, getSessions as apiGetSessions, updateSession as apiUpdateSession } from './services/api';
 import { calculateKeywordRelevance, buildKeywordList } from './utils/keywordRelevance';
-import { getSavedSessions, saveSession, deleteSession, createSession } from './services/storage';
+import { getSavedSessions, saveSession, deleteSession, createSession, pruneRecentSessions, updateSessionSaved } from './services/storage';
 import { ContextualEditor } from './components/detail';
 import { SavedSessions } from './components/SavedSessions';
+import { SessionSidebar } from './components/SessionSidebar';
 import { SavedLinksPanel } from './components/SavedLinksPanel';
 import { GuideModal } from './components/GuideModal';
 import { getSavedLinks } from './services/storage';
@@ -102,11 +103,12 @@ function App() {
           targetPages: (cs.results as { targetPages?: SavedSession['targetPages'] }).targetPages || [],
           results: (cs.results as { results?: SavedSession['results'] }).results || [],
           summary: (cs.results as { summary?: SavedSession['summary'] }).summary || { total_scanned: 0, low_density: 0, good_density: 0, high_density: 0, failed: 0 },
+          isSaved: cs.is_saved,
         })) as SavedSession[];
         setSavedSessions(mapped);
       }).catch(() => setSavedSessions(getSavedSessions()));
     } else {
-      setSavedSessions(getSavedSessions());
+      setSavedSessions(getSavedSessions().map(s => ({ ...s, isSaved: s.isSaved ?? true })));
     }
     setSavedLinksCount(getSavedLinks().length);
   }, [isFree, accessToken]);
@@ -275,13 +277,16 @@ function App() {
       });
 
       setResults(pageResults);
-      setSummary({
+      // Auto-save as recent session
+      const newSummary = {
         total_scanned: total,
         low_density: lowDensity,
         good_density: goodDensity,
         high_density: highDensity,
         failed,
-      });
+      };
+      setSummary(newSummary);
+      autoSaveRecentSession(domain, sourcePattern, targetPattern, sourcePages, targetPages, pageResults, newSummary);
       setStep('results');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to analyze pages');
@@ -329,35 +334,51 @@ function App() {
     if (!summary) return;
 
     if (!isFree && accessToken) {
-      // Pro: save to cloud API
       try {
-        const cloudSession = await apiCreateSession(accessToken, {
-          domain,
-          config: { sourcePattern, targetPattern },
-          results: { sourcePages, targetPages, results, summary },
-        });
-        const mapped: SavedSession = {
-          id: cloudSession.id,
-          name: `${domain} - ${new Date(cloudSession.created_at).toLocaleDateString()}`,
-          createdAt: cloudSession.created_at,
-          updatedAt: cloudSession.updated_at,
-          domain,
-          sourcePattern,
-          targetPattern,
-          sourcePages,
-          targetPages,
-          results,
-          summary,
-        };
-        setCurrentSessionId(mapped.id);
-        setSavedSessions(prev => [mapped, ...prev.filter(s => s.id !== mapped.id)]);
+        if (currentSessionId) {
+          // Update existing session and mark as saved
+          await apiUpdateSession(accessToken, currentSessionId, {
+            config: { sourcePattern, targetPattern },
+            results: { sourcePages, targetPages, results, summary },
+            is_saved: true,
+          });
+          setSavedSessions(prev =>
+            prev.map(s => s.id === currentSessionId
+              ? { ...s, domain, sourcePattern, targetPattern, sourcePages, targetPages, results, summary, isSaved: true, updatedAt: new Date().toISOString() }
+              : s
+            )
+          );
+        } else {
+          const cloudSession = await apiCreateSession(accessToken, {
+            domain,
+            config: { sourcePattern, targetPattern },
+            results: { sourcePages, targetPages, results, summary },
+            is_saved: true,
+          });
+          const mapped: SavedSession = {
+            id: cloudSession.id,
+            name: `${domain} - ${new Date(cloudSession.created_at).toLocaleDateString()}`,
+            createdAt: cloudSession.created_at,
+            updatedAt: cloudSession.updated_at,
+            domain,
+            sourcePattern,
+            targetPattern,
+            sourcePages,
+            targetPages,
+            results,
+            summary,
+            isSaved: true,
+          };
+          setCurrentSessionId(mapped.id);
+          setSavedSessions(prev => [mapped, ...prev.filter(s => s.id !== mapped.id)]);
+        }
       } catch (err) {
         console.error('Failed to save session to cloud:', err);
       }
       return;
     }
 
-    // Free: save to localStorage
+    // Free/localStorage: save with isSaved true
     const session = currentSessionId
       ? {
           id: currentSessionId,
@@ -371,8 +392,9 @@ function App() {
           targetPages,
           results,
           summary,
+          isSaved: true,
         }
-      : createSession(domain, sourcePattern, targetPattern, sourcePages, targetPages, results, summary);
+      : createSession(domain, sourcePattern, targetPattern, sourcePages, targetPages, results, summary, true);
 
     saveSession(session);
     setCurrentSessionId(session.id);
@@ -406,6 +428,102 @@ function App() {
     }
     if (currentSessionId === id) {
       setCurrentSessionId(null);
+    }
+  };
+
+  const handlePromoteSession = async (id: string) => {
+    if (isFree || !accessToken) return;
+
+    try {
+      await apiUpdateSession(accessToken, id, { is_saved: true });
+      setSavedSessions(prev =>
+        prev.map(s => s.id === id ? { ...s, isSaved: true } : s)
+      );
+    } catch (err) {
+      console.error('Failed to save session:', err);
+    }
+  };
+
+  const autoSaveRecentSession = async (
+    analysisDomain: string,
+    analysisSourcePattern: string,
+    analysisTargetPattern: string,
+    analysisSourcePages: PageInfo[],
+    analysisTargetPages: PageInfo[],
+    analysisResults: PageResult[],
+    analysisSummary: NonNullable<typeof summary>,
+  ) => {
+    const sessionData = {
+      domain: analysisDomain,
+      sourcePattern: analysisSourcePattern,
+      targetPattern: analysisTargetPattern,
+      sourcePages: analysisSourcePages,
+      targetPages: analysisTargetPages,
+      results: analysisResults,
+      summary: analysisSummary,
+    };
+
+    if (!isFree && accessToken) {
+      try {
+        if (currentSessionId) {
+          const existing = savedSessions.find(s => s.id === currentSessionId);
+          if (existing) {
+            await apiUpdateSession(accessToken, currentSessionId, {
+              config: { sourcePattern: analysisSourcePattern, targetPattern: analysisTargetPattern },
+              results: { sourcePages: analysisSourcePages, targetPages: analysisTargetPages, results: analysisResults, summary: analysisSummary },
+            });
+            setSavedSessions(prev =>
+              prev.map(s => s.id === currentSessionId
+                ? { ...s, ...sessionData, updatedAt: new Date().toISOString() }
+                : s
+              )
+            );
+            return;
+          }
+        }
+        const cloudSession = await apiCreateSession(accessToken, {
+          domain: analysisDomain,
+          config: { sourcePattern: analysisSourcePattern, targetPattern: analysisTargetPattern },
+          results: { sourcePages: analysisSourcePages, targetPages: analysisTargetPages, results: analysisResults, summary: analysisSummary },
+          is_saved: false,
+        });
+        const mapped: SavedSession = {
+          id: cloudSession.id,
+          name: `${analysisDomain} - ${new Date(cloudSession.created_at).toLocaleDateString()}`,
+          createdAt: cloudSession.created_at,
+          updatedAt: cloudSession.updated_at,
+          ...sessionData,
+          isSaved: false,
+        };
+        setCurrentSessionId(mapped.id);
+        setSavedSessions(prev => {
+          const updated = [mapped, ...prev];
+          const recent = updated.filter(s => !s.isSaved);
+          if (recent.length > 5) {
+            recent.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+            const oldest = recent[recent.length - 1];
+            apiDeleteSession(accessToken, oldest.id).catch(() => {});
+            return updated.filter(s => s.id !== oldest.id);
+          }
+          return updated;
+        });
+      } catch (err) {
+        console.error('Failed to auto-save session:', err);
+      }
+    } else {
+      if (currentSessionId) {
+        const existing = savedSessions.find(s => s.id === currentSessionId);
+        if (existing) {
+          saveSession({ ...existing, ...sessionData, updatedAt: new Date().toISOString() });
+          setSavedSessions(getSavedSessions());
+          return;
+        }
+      }
+      const session = createSession(analysisDomain, analysisSourcePattern, analysisTargetPattern, analysisSourcePages, analysisTargetPages, analysisResults, analysisSummary, false);
+      saveSession(session);
+      pruneRecentSessions();
+      setCurrentSessionId(session.id);
+      setSavedSessions(getSavedSessions());
     }
   };
 
@@ -587,12 +705,19 @@ function App() {
               <span className="header-btn__text">Saved Links</span>
               {savedLinksCount > 0 && <span className="header-btn__badge">{savedLinksCount}</span>}
             </button>
-            {isFree ? (
-              <Tooltip content="Saved sessions require a Pro subscription." position="bottom">
+            {isFree && step !== 'setup' ? (
+              <Tooltip content="Saved sessions require a subscription." position="bottom">
                 <Link to="/pricing" className="header-btn" style={{ textDecoration: 'none' }}>
-                  <span className="header-btn__text">🔒 Sessions</span>
+                  <span className="header-btn__text">Sessions</span>
                 </Link>
               </Tooltip>
+            ) : step === 'setup' ? (
+              <button onClick={() => {
+                document.querySelector('.session-sidebar')?.scrollIntoView({ behavior: 'smooth' });
+              }} className="header-btn">
+                <span className="header-btn__text">Sessions</span>
+                {savedSessions.length > 0 && <span className="header-btn__badge">{savedSessions.length}</span>}
+              </button>
             ) : (
               <button onClick={() => setShowSavedSessions(true)} className="header-btn">
                 <span className="header-btn__text">Sessions</span>
@@ -618,7 +743,8 @@ function App() {
 
           {step === 'setup' && (
             <section className="setup">
-              <div className="setup__hero">
+              <div className="setup__form">
+                <div className="setup__hero">
                 <h2 className="setup__heading">Analyze Your Internal Links</h2>
                 <p className="setup__desc">Enter your website details to discover linking opportunities and get AI-powered suggestions.</p>
               </div>
@@ -772,7 +898,16 @@ function App() {
                 <button type="submit" disabled={loading} className="primary">
                   {loading ? 'Fetching Sitemap...' : 'Fetch Sitemap'}
                 </button>
-              </form>
+                </form>
+              </div>
+              <SessionSidebar
+                sessions={savedSessions}
+                currentSessionId={currentSessionId}
+                userPlan={user?.plan ?? 'free'}
+                onLoad={handleLoadSession}
+                onDelete={handleDeleteSession}
+                onSave={handlePromoteSession}
+              />
             </section>
           )}
 

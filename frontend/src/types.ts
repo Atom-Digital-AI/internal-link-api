@@ -192,6 +192,7 @@ export interface SavedSession {
   // Filter options (optional for backwards compatibility)
   filterOptions?: FilterOptions;
   targetPageInfo?: TargetPageInfo;
+  isSaved: boolean;
 }
 
 export interface SavedSessionsListProps {

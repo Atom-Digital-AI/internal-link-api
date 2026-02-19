@@ -44,6 +44,37 @@ export function deleteSession(id: string): void {
   }
 }
 
+const MAX_RECENT = 5;
+
+export function pruneRecentSessions(): void {
+  try {
+    const sessions = getSavedSessions();
+    const recentSessions = sessions.filter(s => !s.isSaved);
+    if (recentSessions.length > MAX_RECENT) {
+      recentSessions.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+      const toDelete = recentSessions.slice(MAX_RECENT);
+      const idsToDelete = new Set(toDelete.map(s => s.id));
+      const filtered = sessions.filter(s => !idsToDelete.has(s.id));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+    }
+  } catch {
+    console.error('Failed to prune recent sessions');
+  }
+}
+
+export function updateSessionSaved(id: string, isSaved: boolean): void {
+  try {
+    const sessions = getSavedSessions();
+    const index = sessions.findIndex(s => s.id === id);
+    if (index >= 0) {
+      sessions[index] = { ...sessions[index], isSaved, updatedAt: new Date().toISOString() };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+    }
+  } catch {
+    console.error('Failed to update session saved status');
+  }
+}
+
 export function createSession(
   domain: string,
   sourcePattern: string,
@@ -51,7 +82,8 @@ export function createSession(
   sourcePages: SavedSession['sourcePages'],
   targetPages: SavedSession['targetPages'],
   results: SavedSession['results'],
-  summary: SavedSession['summary']
+  summary: SavedSession['summary'],
+  isSaved: boolean = false
 ): SavedSession {
   const now = new Date().toISOString();
   const hostname = new URL(domain).hostname;
@@ -68,6 +100,7 @@ export function createSession(
     targetPages,
     results,
     summary,
+    isSaved,
   };
 }
 

@@ -156,6 +156,7 @@ export interface UserProfile {
 export interface CloudSession {
   id: string;
   domain: string;
+  is_saved: boolean;
   config: Record<string, unknown>;
   results: Record<string, unknown>;
   created_at: string;
@@ -202,7 +203,7 @@ export async function getSessions(token: string | null): Promise<CloudSession[]>
 
 export async function createSession(
   token: string | null,
-  data: { domain: string; config: Record<string, unknown>; results: Record<string, unknown> }
+  data: { domain: string; config: Record<string, unknown>; results: Record<string, unknown>; is_saved?: boolean }
 ): Promise<CloudSession> {
   return fetchJson<CloudSession>(
     `${API_BASE}/sessions`,
@@ -215,6 +216,18 @@ export async function deleteSession(token: string | null, sessionId: string): Pr
   await fetchJson<void>(
     `${API_BASE}/sessions/${sessionId}`,
     { method: 'DELETE' },
+    token
+  );
+}
+
+export async function updateSession(
+  token: string | null,
+  sessionId: string,
+  data: { config?: Record<string, unknown>; results?: Record<string, unknown>; is_saved?: boolean }
+): Promise<CloudSession> {
+  return fetchJson<CloudSession>(
+    `${API_BASE}/sessions/${sessionId}`,
+    { method: 'PUT', body: JSON.stringify(data) },
     token
   );
 }
