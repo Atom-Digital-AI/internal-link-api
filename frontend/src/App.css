@@ -1954,8 +1954,8 @@ button.danger:hover {
   position: absolute;
   z-index: 1000;
   padding: var(--sp-2) var(--sp-3);
-  background: var(--chrome-bg);
-  color: var(--chrome-text);
+  background: var(--bg-body);
+  color: var(--text-primary);
   font-size: var(--text-xs);
   font-weight: 400;
   line-height: 1.5;
@@ -1978,7 +1978,7 @@ button.danger:hover {
   position: absolute;
   width: 8px;
   height: 8px;
-  background: var(--chrome-bg);
+  background: var(--bg-body);
   transform: rotate(45deg);
 }
 
