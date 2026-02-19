@@ -34,6 +34,8 @@ from billing.router import router as billing_router
 from sessions.router import router as sessions_router
 from links.router import router as links_router
 from ai_router.router import router as ai_router
+from internal.router import router as internal_router
+from blog.router import router as blog_router
 
 # Configurable limits via environment variables
 MAX_BULK_URLS = int(os.environ.get("MAX_BULK_URLS", "100"))
@@ -91,6 +93,8 @@ app.include_router(billing_router)
 app.include_router(sessions_router)
 app.include_router(links_router)
 app.include_router(ai_router)
+app.include_router(internal_router)
+app.include_router(blog_router)
 
 
 # ---------------------------------------------------------------------------
