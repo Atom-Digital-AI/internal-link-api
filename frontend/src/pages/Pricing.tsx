@@ -74,7 +74,7 @@ export default function Pricing() {
     setLoading('manage')
     setError(null)
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/billing/portal`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/billing/portal`, {
         headers: {
           ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         },
