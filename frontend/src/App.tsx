@@ -20,6 +20,7 @@ import { Tooltip, TooltipIcon } from './components/Tooltip';
 import { useAuth } from './contexts/AuthContext';
 import { Link } from 'react-router-dom';
 import './App.css';
+import linkiLogo from '../media/images/logos/Linki Logo - No Spacing - Transparent.png';
 
 type Step = 'setup' | 'select' | 'results' | 'detail';
 
@@ -115,6 +116,17 @@ function App() {
       setSavedLinksCount(getSavedLinks().length);
     }
   }, [showSavedLinks]);
+
+  // Frosted header on scroll
+  useEffect(() => {
+    const header = document.querySelector('.app-header');
+    if (!header) return;
+    const onScroll = () => {
+      header.classList.toggle('is-scrolled', window.scrollY > 0);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   const handleFetchSitemap = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -490,18 +502,14 @@ function App() {
 
   return (
     <div className="app-shell">
-      {/* ── GRADIENT ACCENT BAR ── */}
-      <div className="accent-bar" />
-
       {/* ── DARK HEADER ── */}
       <header className="app-header">
         <div className="app-header__inner">
           <div className="app-header__brand">
-            <span className="app-header__logo">LS</span>
-            <div>
-              <h1 className="app-header__title">LinkScope</h1>
-              <p className="app-header__subtitle">Internal Link Finder</p>
+            <div className="app-header__logo">
+              <img src={linkiLogo} alt="Linki" />
             </div>
+            <h1 className="app-header__title">Linki</h1>
           </div>
 
           <nav className="step-nav" aria-label="Progress">
