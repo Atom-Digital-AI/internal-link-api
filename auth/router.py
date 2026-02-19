@@ -1,5 +1,6 @@
 """Auth router: register, login, logout, token refresh, password reset, user profile."""
 import hashlib
+import logging
 import os
 import secrets
 from datetime import datetime, timedelta, timezone
@@ -30,6 +31,8 @@ user_router = APIRouter(prefix="/user", tags=["user"])
 
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -192,6 +195,9 @@ async def google_auth(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid Google token.",
         )
+    except Exception:
+        logger.exception("Google token verification failed")
+        raise
 
     google_id = idinfo["sub"]
     email = idinfo.get("email", "").lower()
