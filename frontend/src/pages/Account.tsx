@@ -153,7 +153,7 @@ function AccountDetailsCard() {
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!newEmail.trim() || !confirmPassword) return
+    if (!newEmail.trim() || (user?.has_password && !confirmPassword)) return
     setLoading(true)
     setError(null)
     setSuccess(null)
@@ -204,18 +204,20 @@ function AccountDetailsCard() {
                 style={input}
               />
             </div>
-            <div>
-              <label style={label}>Confirm with current password</label>
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={e => setConfirmPassword(e.target.value)}
-                required
-                autoComplete="current-password"
-                placeholder="Required to confirm your identity"
-                style={input}
-              />
-            </div>
+            {user?.has_password && (
+              <div>
+                <label style={label}>Confirm with current password</label>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)}
+                  required
+                  autoComplete="current-password"
+                  placeholder="Required to confirm your identity"
+                  style={input}
+                />
+              </div>
+            )}
             <div style={{ display: 'flex', gap: 'var(--sp-2)' }}>
               <button
                 type="submit"
@@ -362,13 +364,10 @@ function GoogleLinkCard() {
   const { user, accessToken, refreshUser } = useAuth()
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
-
   const handleLink = async (credentialResponse: { credential?: string }) => {
     if (!credentialResponse.credential) return
     setError(null)
     setSuccess(null)
-    setLoading(true)
     try {
       const API_BASE = import.meta.env.VITE_API_URL || ''
       const res = await fetch(`${API_BASE}/auth/google/link`, {
@@ -387,8 +386,6 @@ function GoogleLinkCard() {
       await refreshUser()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to link Google account.')
-    } finally {
-      setLoading(false)
     }
   }
 
