@@ -72,6 +72,10 @@ export function ArticlePreview({
           Existing Links ({existingCount}{totalExistingLinks > existingCount ? ` of ${totalExistingLinks} highlighted` : ''})
         </span>
         <span className="article-preview__legend-item">
+          <span className="article-preview__legend-color article-preview__legend-color--target"></span>
+          Target Links
+        </span>
+        <span className="article-preview__legend-item">
           <span className="article-preview__legend-color article-preview__legend-color--suggestion"></span>
           Suggested Links ({suggestionCount})
         </span>

@@ -1198,6 +1198,11 @@ button.small {
   border-bottom: 2px solid var(--chrome-accent);
 }
 
+.article-preview__legend-color--target {
+  background: rgba(16, 185, 129, 0.15);
+  border-bottom: 2px solid var(--color-success);
+}
+
 .article-preview__legend-color--suggestion {
   background: rgba(245, 158, 11, 0.18);
   border-bottom: 2px solid var(--color-warning);

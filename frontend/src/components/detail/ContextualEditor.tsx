@@ -68,7 +68,7 @@ export function ContextualEditor({
 
   // Auto-fetch suggestions on mount if page needs links (Pro only)
   useEffect(() => {
-    const needsLinks = pageData.internal_links.to_target_pages === 0 || pageData.link_density > 500;
+    const needsLinks = pageData.link_density < 0.35;
     if (!isFree && needsLinks && suggestions.length === 0 && !isLoadingSuggestions) {
       handleGetSuggestions();
     }

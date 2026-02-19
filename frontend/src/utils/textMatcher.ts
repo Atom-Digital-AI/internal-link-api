@@ -1,6 +1,24 @@
 import type { MatchResult } from '../types';
 
 /**
+ * Checks if a character is a word character (letter, digit, or underscore)
+ */
+function isWordChar(ch: string | undefined): boolean {
+  if (!ch) return false;
+  return /\w/.test(ch);
+}
+
+/**
+ * Checks whether a match at the given position sits on word boundaries.
+ * Returns true if the match is NOT a substring of a larger word.
+ */
+function isWordBoundaryMatch(text: string, start: number, end: number): boolean {
+  const charBefore = start > 0 ? text[start - 1] : undefined;
+  const charAfter = end < text.length ? text[end] : undefined;
+  return !isWordChar(charBefore) && !isWordChar(charAfter);
+}
+
+/**
  * Normalizes text for comparison by:
  * - Converting to lowercase
  * - Collapsing multiple whitespace to single space
@@ -83,18 +101,23 @@ export function findTextInContent(
   const decodedContent = decodeHtmlEntities(content);
   const decodedSearch = decodeHtmlEntities(searchText);
 
-  // 1. Try exact match first
-  const exactIndex = decodedContent.indexOf(decodedSearch, startFrom);
-  if (exactIndex !== -1) {
-    return {
-      found: true,
-      range: { start: exactIndex, end: exactIndex + decodedSearch.length },
-      confidence: 1.0,
-      matchType: 'exact'
-    };
+  // 1. Try exact match first (with word boundary check)
+  let searchFrom = startFrom;
+  while (true) {
+    const exactIndex = decodedContent.indexOf(decodedSearch, searchFrom);
+    if (exactIndex === -1) break;
+    if (isWordBoundaryMatch(decodedContent, exactIndex, exactIndex + decodedSearch.length)) {
+      return {
+        found: true,
+        range: { start: exactIndex, end: exactIndex + decodedSearch.length },
+        confidence: 1.0,
+        matchType: 'exact'
+      };
+    }
+    searchFrom = exactIndex + 1;
   }
 
-  // 2. Try normalized match
+  // 2. Try normalized match (with word boundary check)
   const normalizedContent = normalizeText(decodedContent);
   const normalizedSearch = normalizeText(decodedSearch);
 
@@ -102,19 +125,21 @@ export function findTextInContent(
   // Build a mapping from normalized index to original index
   const positionMap = buildPositionMap(decodedContent);
 
-  const normalizedIndex = normalizedContent.indexOf(normalizedSearch,
-    positionMap.findNormalizedIndex(startFrom));
-
-  if (normalizedIndex !== -1) {
+  let normalizedSearchFrom = positionMap.findNormalizedIndex(startFrom);
+  while (true) {
+    const normalizedIndex = normalizedContent.indexOf(normalizedSearch, normalizedSearchFrom);
+    if (normalizedIndex === -1) break;
     const originalStart = positionMap.findOriginalIndex(normalizedIndex);
     const originalEnd = positionMap.findOriginalIndex(normalizedIndex + normalizedSearch.length);
-
-    return {
-      found: true,
-      range: { start: originalStart, end: originalEnd },
-      confidence: 0.95,
-      matchType: 'normalized'
-    };
+    if (isWordBoundaryMatch(decodedContent, originalStart, originalEnd)) {
+      return {
+        found: true,
+        range: { start: originalStart, end: originalEnd },
+        confidence: 0.95,
+        matchType: 'normalized'
+      };
+    }
+    normalizedSearchFrom = normalizedIndex + 1;
   }
 
   // 3. Try fuzzy match using sliding window
@@ -235,25 +260,32 @@ export function findAnchorInRange(
 ): { start: number; end: number } | null {
   const rangeContent = content.slice(rangeStart, rangeEnd);
 
-  // Try exact match first
-  let anchorIndex = rangeContent.indexOf(anchorText);
-  if (anchorIndex !== -1) {
-    return {
-      start: rangeStart + anchorIndex,
-      end: rangeStart + anchorIndex + anchorText.length
-    };
+  // Try exact match first (with word boundary check against full content)
+  let searchFrom = 0;
+  while (true) {
+    const anchorIndex = rangeContent.indexOf(anchorText, searchFrom);
+    if (anchorIndex === -1) break;
+    const absStart = rangeStart + anchorIndex;
+    const absEnd = absStart + anchorText.length;
+    if (isWordBoundaryMatch(content, absStart, absEnd)) {
+      return { start: absStart, end: absEnd };
+    }
+    searchFrom = anchorIndex + 1;
   }
 
-  // Try case-insensitive match
+  // Try case-insensitive match (with word boundary check)
   const lowerRange = rangeContent.toLowerCase();
   const lowerAnchor = anchorText.toLowerCase();
-  anchorIndex = lowerRange.indexOf(lowerAnchor);
-
-  if (anchorIndex !== -1) {
-    return {
-      start: rangeStart + anchorIndex,
-      end: rangeStart + anchorIndex + anchorText.length
-    };
+  searchFrom = 0;
+  while (true) {
+    const anchorIndex = lowerRange.indexOf(lowerAnchor, searchFrom);
+    if (anchorIndex === -1) break;
+    const absStart = rangeStart + anchorIndex;
+    const absEnd = absStart + anchorText.length;
+    if (isWordBoundaryMatch(content, absStart, absEnd)) {
+      return { start: absStart, end: absEnd };
+    }
+    searchFrom = anchorIndex + 1;
   }
 
   return null;
@@ -277,16 +309,18 @@ export function findAllOccurrences(
   const lowerContent = content.toLowerCase();
   const lowerSearch = cleanSearch.toLowerCase();
 
-  // Strategy 1: Exact match (case-insensitive)
+  // Strategy 1: Exact match (case-insensitive) with word boundary check
   let startIndex = 0;
   while (true) {
     const index = lowerContent.indexOf(lowerSearch, startIndex);
     if (index === -1) break;
 
-    results.push({
-      start: index,
-      end: index + cleanSearch.length
-    });
+    if (isWordBoundaryMatch(content, index, index + cleanSearch.length)) {
+      results.push({
+        start: index,
+        end: index + cleanSearch.length
+      });
+    }
 
     startIndex = index + 1;
   }
@@ -294,7 +328,7 @@ export function findAllOccurrences(
   // If we found exact matches, return them
   if (results.length > 0) return results;
 
-  // Strategy 2: Normalized whitespace match
+  // Strategy 2: Normalized whitespace match with word boundary check
   // Collapse multiple spaces in search text and try to find it
   const normalizedSearch = normalizeText(cleanSearch);
   if (normalizedSearch.length < 3) return results;
@@ -311,10 +345,12 @@ export function findAllOccurrences(
     const originalStart = positionMap.findOriginalIndex(index);
     const originalEnd = positionMap.findOriginalIndex(index + normalizedSearch.length);
 
-    results.push({
-      start: originalStart,
-      end: originalEnd
-    });
+    if (isWordBoundaryMatch(content, originalStart, originalEnd)) {
+      results.push({
+        start: originalStart,
+        end: originalEnd
+      });
+    }
 
     startIndex = index + 1;
   }
