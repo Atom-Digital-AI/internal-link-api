@@ -60,8 +60,9 @@ function App() {
   const [results, setResults] = useState<PageResult[]>([]);
   const [summary, setSummary] = useState<{
     total_scanned: number;
-    needs_links: number;
-    has_good_density: number;
+    low_density: number;
+    good_density: number;
+    high_density: number;
     failed: number;
   } | null>(null);
 
@@ -100,7 +101,7 @@ function App() {
           sourcePages: (cs.results as { sourcePages?: SavedSession['sourcePages'] }).sourcePages || [],
           targetPages: (cs.results as { targetPages?: SavedSession['targetPages'] }).targetPages || [],
           results: (cs.results as { results?: SavedSession['results'] }).results || [],
-          summary: (cs.results as { summary?: SavedSession['summary'] }).summary || { total_scanned: 0, needs_links: 0, has_good_density: 0, failed: 0 },
+          summary: (cs.results as { summary?: SavedSession['summary'] }).summary || { total_scanned: 0, low_density: 0, good_density: 0, high_density: 0, failed: 0 },
         })) as SavedSession[];
         setSavedSessions(mapped);
       }).catch(() => setSavedSessions(getSavedSessions()));
@@ -176,8 +177,9 @@ function App() {
     }
 
     const pageResults: PageResult[] = [];
-    let needsLinks = 0;
-    let hasGoodDensity = 0;
+    let lowDensity = 0;
+    let goodDensity = 0;
+    let highDensity = 0;
     let failed = 0;
 
     try {
@@ -187,11 +189,31 @@ function App() {
         try {
           const data = await analyzePage(url, targetPattern);
           const linkDensity = data.word_count > 0
-            ? data.word_count / (data.internal_links.to_target_pages || 1)
+            ? (data.internal_links.total / data.word_count) * 100
             : 0;
-          const status = data.internal_links.to_target_pages === 0 || linkDensity > 500
-            ? 'needs_links'
-            : 'good';
+
+          const minGood = Math.floor(data.word_count * 0.0035);
+          const maxGood = Math.floor(data.word_count * 0.007);
+          const current = data.internal_links.total;
+
+          let status: 'low' | 'good' | 'high' | 'failed';
+          let linksAvailable: string;
+
+          if (linkDensity < 0.35) {
+            status = 'low';
+            const addMin = Math.max(0, minGood - current);
+            const addMax = maxGood - current;
+            linksAvailable = `+${addMin} to +${addMax}`;
+          } else if (linkDensity > 0.7) {
+            status = 'high';
+            const removeMin = Math.max(0, current - maxGood);
+            const removeMax = current - minGood;
+            linksAvailable = `-${removeMin} to -${removeMax}`;
+          } else {
+            status = 'good';
+            const headroom = maxGood - current;
+            linksAvailable = headroom > 0 ? `0 to +${headroom}` : '0';
+          }
 
           const keywordRelevance = keywords.length > 0
             ? calculateKeywordRelevance(data.extracted_content, keywords, filterMatchType)
@@ -204,16 +226,19 @@ function App() {
             internal_link_count: data.internal_links.total,
             target_link_count: data.internal_links.to_target_pages,
             link_density: linkDensity,
+            links_available: linksAvailable,
             status,
             error: null,
             lastmod: pageInfo?.lastmod || null,
             keyword_relevance: keywordRelevance,
           });
 
-          if (status === 'needs_links') {
-            needsLinks++;
+          if (status === 'low') {
+            lowDensity++;
+          } else if (status === 'high') {
+            highDensity++;
           } else {
-            hasGoodDensity++;
+            goodDensity++;
           }
         } catch (err) {
           pageResults.push({
@@ -223,6 +248,7 @@ function App() {
             internal_link_count: 0,
             target_link_count: 0,
             link_density: 0,
+            links_available: '',
             status: 'failed',
             error: err instanceof Error ? err.message : 'Failed to analyze',
             lastmod: pageInfo?.lastmod || null,
@@ -251,8 +277,9 @@ function App() {
       setResults(pageResults);
       setSummary({
         total_scanned: total,
-        needs_links: needsLinks,
-        has_good_density: hasGoodDensity,
+        low_density: lowDensity,
+        good_density: goodDensity,
+        high_density: highDensity,
         failed,
       });
       setStep('results');
@@ -411,8 +438,9 @@ function App() {
     }
 
     const pageResults: PageResult[] = [];
-    let needsLinks = 0;
-    let hasGoodDensity = 0;
+    let lowDensity = 0;
+    let goodDensity = 0;
+    let highDensity = 0;
     let failed = 0;
 
     try {
@@ -422,11 +450,31 @@ function App() {
         try {
           const data = await analyzePage(url, targetPattern);
           const linkDensity = data.word_count > 0
-            ? data.word_count / (data.internal_links.to_target_pages || 1)
+            ? (data.internal_links.total / data.word_count) * 100
             : 0;
-          const status = data.internal_links.to_target_pages === 0 || linkDensity > 500
-            ? 'needs_links'
-            : 'good';
+
+          const minGood = Math.floor(data.word_count * 0.0035);
+          const maxGood = Math.floor(data.word_count * 0.007);
+          const current = data.internal_links.total;
+
+          let status: 'low' | 'good' | 'high' | 'failed';
+          let linksAvailable: string;
+
+          if (linkDensity < 0.35) {
+            status = 'low';
+            const addMin = Math.max(0, minGood - current);
+            const addMax = maxGood - current;
+            linksAvailable = `+${addMin} to +${addMax}`;
+          } else if (linkDensity > 0.7) {
+            status = 'high';
+            const removeMin = Math.max(0, current - maxGood);
+            const removeMax = current - minGood;
+            linksAvailable = `-${removeMin} to -${removeMax}`;
+          } else {
+            status = 'good';
+            const headroom = maxGood - current;
+            linksAvailable = headroom > 0 ? `0 to +${headroom}` : '0';
+          }
 
           const keywordRelevance = keywords.length > 0
             ? calculateKeywordRelevance(data.extracted_content, keywords, filterMatchType)
@@ -439,16 +487,19 @@ function App() {
             internal_link_count: data.internal_links.total,
             target_link_count: data.internal_links.to_target_pages,
             link_density: linkDensity,
+            links_available: linksAvailable,
             status,
             error: null,
             lastmod: pageInfo?.lastmod || null,
             keyword_relevance: keywordRelevance,
           });
 
-          if (status === 'needs_links') {
-            needsLinks++;
+          if (status === 'low') {
+            lowDensity++;
+          } else if (status === 'high') {
+            highDensity++;
           } else {
-            hasGoodDensity++;
+            goodDensity++;
           }
         } catch (err) {
           pageResults.push({
@@ -458,6 +509,7 @@ function App() {
             internal_link_count: 0,
             target_link_count: 0,
             link_density: 0,
+            links_available: '',
             status: 'failed',
             error: err instanceof Error ? err.message : 'Failed to analyze',
             lastmod: pageInfo?.lastmod || null,
@@ -486,8 +538,9 @@ function App() {
       setResults(pageResults);
       setSummary({
         total_scanned: total,
-        needs_links: needsLinks,
-        has_good_density: hasGoodDensity,
+        low_density: lowDensity,
+        good_density: goodDensity,
+        high_density: highDensity,
         failed,
       });
     } catch (err) {
@@ -546,6 +599,9 @@ function App() {
                 <span className="header-btn__badge">{savedSessions.length}</span>
               </button>
             )}
+            <Link to="/account" className="header-btn" style={{ textDecoration: 'none' }}>
+              <span className="header-btn__text">Account</span>
+            </Link>
           </div>
         </div>
       </header>
@@ -847,13 +903,17 @@ function App() {
                       <span className="stat-value">{summary.total_scanned}</span>
                       <span className="stat-label">Scanned</span>
                     </div>
-                    <div className="stat needs">
-                      <span className="stat-value">{summary.needs_links}</span>
-                      <span className="stat-label">Need Links</span>
+                    <div className="stat low">
+                      <span className="stat-value">{summary.low_density}</span>
+                      <span className="stat-label">Low</span>
                     </div>
                     <div className="stat good">
-                      <span className="stat-value">{summary.has_good_density}</span>
+                      <span className="stat-value">{summary.good_density}</span>
                       <span className="stat-label">Good</span>
+                    </div>
+                    <div className="stat high">
+                      <span className="stat-value">{summary.high_density}</span>
+                      <span className="stat-label">High</span>
                     </div>
                     <div className="stat failed">
                       <span className="stat-value">{summary.failed}</span>
@@ -872,7 +932,8 @@ function App() {
                       {(filterTargetUrl || filterKeyword) && <th>Relevance</th>}
                       <th>Words</th>
                       <th>Links</th>
-                      <th>Target Links</th>
+                      <th>Density</th>
+                      <th>Links Available</th>
                       <th>Status</th>
                       <th></th>
                     </tr>
@@ -908,11 +969,17 @@ function App() {
                         )}
                         <td>{result.word_count.toLocaleString()}</td>
                         <td>{result.internal_link_count}</td>
-                        <td>{result.target_link_count}</td>
+                        <td>
+                          <span className={`density-value density-${result.status !== 'failed' ? result.status : ''}`} title={`< 0.35% = Low | 0.35%–0.7% = Good | > 0.7% = High`}>
+                            {result.status !== 'failed' ? `${result.link_density.toFixed(2)}%` : '\u2014'}
+                          </span>
+                        </td>
+                        <td>{result.status !== 'failed' ? result.links_available : '\u2014'}</td>
                         <td>
                           <span className={`badge ${result.status}`}>
-                            {result.status === 'needs_links' ? 'Needs Links' :
-                             result.status === 'good' ? 'Good' : 'Failed'}
+                            {result.status === 'low' ? 'Low' :
+                             result.status === 'good' ? 'Good' :
+                             result.status === 'high' ? 'High' : 'Failed'}
                           </span>
                         </td>
                         <td>
