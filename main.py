@@ -155,7 +155,7 @@ async def fetch_target(request: FetchTargetRequest):
 async def bulk_analyze(request: BulkAnalyzeRequest):
     """
     Analyze multiple URLs with a 1-second delay between requests.
-    Flags pages where link_density > threshold OR target_link_count == 0.
+    Classifies pages by link density: low (<0.35%), good (0.35%-0.7%), high (>0.7%).
 
     Optional filters:
     - filter_target_url: Specific page to build links to (fetches and extracts keywords)
@@ -185,15 +185,15 @@ async def bulk_analyze(request: BulkAnalyzeRequest):
             filter_keywords.extend(words)
 
     results = []
-    needs_links = 0
-    has_good_density = 0
+    low_density = 0
+    good_density = 0
+    high_density = 0
     failed = 0
 
     for url in request.urls:
         result = await analyze_page_summary(
             str(url),
             request.target_pattern,
-            request.link_ratio_threshold,
             filter_keywords=filter_keywords if filter_keywords else None,
             filter_match_type=request.filter_match_type,
         )
@@ -201,10 +201,12 @@ async def bulk_analyze(request: BulkAnalyzeRequest):
 
         if result.status == "failed":
             failed += 1
-        elif result.status == "needs_links":
-            needs_links += 1
+        elif result.status == "low":
+            low_density += 1
+        elif result.status == "high":
+            high_density += 1
         else:
-            has_good_density += 1
+            good_density += 1
 
         # Be polite - 1 second delay between requests
         if url != request.urls[-1]:
@@ -214,8 +216,9 @@ async def bulk_analyze(request: BulkAnalyzeRequest):
         results=results,
         summary=BulkSummary(
             total_scanned=len(results),
-            needs_links=needs_links,
-            has_good_density=has_good_density,
+            low_density=low_density,
+            good_density=good_density,
+            high_density=high_density,
             failed=failed,
         ),
         target_page_info=target_page_info,

@@ -62,7 +62,6 @@ class AnalyzeResponse(BaseModel):
 class BulkAnalyzeRequest(BaseModel):
     urls: list[HttpUrl]
     target_pattern: str = "/services/"
-    link_ratio_threshold: int = 500
     # Filter options for focused search
     filter_target_url: Optional[str] = None  # Specific page to build links to
     filter_keyword: Optional[str] = None  # Keyword to focus on
@@ -76,6 +75,7 @@ class PageResult(BaseModel):
     internal_link_count: int = 0
     target_link_count: int = 0
     link_density: float = 0.0
+    links_available: str = ""
     status: str = "ok"
     error: Optional[str] = None
     keyword_relevance: Optional[int] = None  # 0-5 relevance score when filter is active
@@ -83,8 +83,9 @@ class PageResult(BaseModel):
 
 class BulkSummary(BaseModel):
     total_scanned: int
-    needs_links: int
-    has_good_density: int
+    low_density: int
+    good_density: int
+    high_density: int
     failed: int
 
 

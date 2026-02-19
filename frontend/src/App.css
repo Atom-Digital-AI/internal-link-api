@@ -545,7 +545,7 @@ button.small {
 /* Summary Stats */
 .summary {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: var(--sp-3);
 }
 
@@ -585,12 +585,12 @@ button.small {
   letter-spacing: 0.06em;
 }
 
-.stat.needs {
-  background: var(--color-danger-bg);
-  border-color: var(--color-danger-border);
+.stat.low {
+  background: var(--color-info-bg);
+  border-color: var(--color-info-border);
 }
-.stat.needs .stat-value {
-  color: var(--color-danger-text);
+.stat.low .stat-value {
+  color: var(--color-info-text);
 }
 
 .stat.good {
@@ -599,6 +599,14 @@ button.small {
 }
 .stat.good .stat-value {
   color: var(--color-success-text);
+}
+
+.stat.high {
+  background: var(--color-danger-bg);
+  border-color: var(--color-danger-border);
+}
+.stat.high .stat-value {
+  color: var(--color-danger-text);
 }
 
 .stat.failed {
@@ -654,11 +662,19 @@ button.small {
   background: var(--bg-inset);
 }
 
-.results-table tr.status-needs_links {
+.results-table tr.status-low {
+  background: rgba(0, 113, 227, 0.04);
+}
+
+.results-table tr.status-low:hover {
+  background: rgba(0, 113, 227, 0.07);
+}
+
+.results-table tr.status-high {
   background: rgba(255, 59, 48, 0.04);
 }
 
-.results-table tr.status-needs_links:hover {
+.results-table tr.status-high:hover {
   background: rgba(255, 59, 48, 0.07);
 }
 
@@ -699,9 +715,9 @@ button.small {
   line-height: 1.6;
 }
 
-.badge.needs_links {
-  background: var(--color-danger-bg);
-  color: var(--color-danger-text);
+.badge.low {
+  background: var(--color-info-bg);
+  color: var(--color-info-text);
 }
 
 .badge.good {
@@ -709,9 +725,33 @@ button.small {
   color: var(--color-success-text);
 }
 
+.badge.high {
+  background: var(--color-danger-bg);
+  color: var(--color-danger-text);
+}
+
 .badge.failed {
   background: var(--bg-inset);
   color: var(--text-tertiary);
+}
+
+/* Density value color coding */
+.density-value {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: help;
+}
+
+.density-low {
+  color: var(--color-info-text);
+}
+
+.density-good {
+  color: var(--color-success-text);
+}
+
+.density-high {
+  color: var(--color-danger-text);
 }
 
 /* ==========================================================================
@@ -1709,7 +1749,7 @@ button.small {
     grid-template-columns: 1fr;
   }
   .summary {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
   }
 
   .results-table {
@@ -1933,14 +1973,19 @@ button.small {
   font-weight: 600;
 }
 
-.session-stats .needs {
-  background: var(--color-danger-bg);
-  color: var(--color-danger-text);
+.session-stats .low {
+  background: var(--color-info-bg);
+  color: var(--color-info-text);
 }
 
 .session-stats .good {
   background: var(--color-success-bg);
   color: var(--color-success-text);
+}
+
+.session-stats .high {
+  background: var(--color-danger-bg);
+  color: var(--color-danger-text);
 }
 
 .session-actions {
@@ -2498,13 +2543,17 @@ button.danger:hover {
   font-weight: 600;
 }
 
-.guide-status--needs {
-  background: var(--color-danger-bg);
-  color: var(--color-danger-text);
+.guide-status--low {
+  background: var(--color-info-bg);
+  color: var(--color-info-text);
 }
 .guide-status--good {
   background: var(--color-success-bg);
   color: var(--color-success-text);
+}
+.guide-status--high {
+  background: var(--color-danger-bg);
+  color: var(--color-danger-text);
 }
 
 .guide-highlight {

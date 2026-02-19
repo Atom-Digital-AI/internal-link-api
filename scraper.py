@@ -278,9 +278,8 @@ async def analyze_page(url: str, target_pattern: str) -> AnalyzeResponse:
     # Count target links
     target_link_count = sum(1 for link in internal_links if link.is_target)
 
-    # Calculate link density (words per internal link)
-    # Use 0.0 when no internal links (JSON doesn't support infinity)
-    link_density = word_count / len(internal_links) if internal_links else 0.0
+    # Calculate link density as percentage: (links / words) * 100
+    link_density = (len(internal_links) / word_count) * 100 if word_count > 0 else 0.0
 
     # Create content snippet
     content_snippet = extracted_content[:500] if extracted_content else ""
@@ -304,7 +303,6 @@ async def analyze_page(url: str, target_pattern: str) -> AnalyzeResponse:
 async def analyze_page_summary(
     url: str,
     target_pattern: str,
-    link_ratio_threshold: int,
     filter_keywords: list[str] | None = None,
     filter_match_type: str = "stemmed"
 ) -> PageResult:
@@ -314,10 +312,11 @@ async def analyze_page_summary(
     Args:
         url: The URL to analyze
         target_pattern: Pattern for target pages
-        link_ratio_threshold: Words per link threshold
         filter_keywords: Optional keywords for relevance scoring
         filter_match_type: "exact" or "stemmed" for keyword matching
     """
+    import math
+
     result = await analyze_page(url, target_pattern)
 
     if result.error:
@@ -336,13 +335,39 @@ async def analyze_page_summary(
             filter_match_type
         )
 
-    # Determine status
-    needs_links = (
-        result.link_density > link_ratio_threshold
-        or result.internal_links.to_target_pages == 0
-    )
+    # Density thresholds
+    LOW_THRESHOLD = 0.35
+    HIGH_THRESHOLD = 0.7
 
-    status = "needs_links" if needs_links else "good"
+    density = result.link_density  # Already (links/words)*100 from analyze_page
+    current_links = result.internal_links.total
+    word_count = result.word_count
+
+    min_good = math.floor(word_count * 0.0035)
+    max_good = math.floor(word_count * 0.007)
+
+    # Determine status and links_available
+    if density < LOW_THRESHOLD:
+        status = "low"
+        add_min = min_good - current_links
+        add_max = max_good - current_links
+        if add_min < 0:
+            add_min = 0
+        links_available = f"+{add_min} to +{add_max}"
+    elif density > HIGH_THRESHOLD:
+        status = "high"
+        remove_min = current_links - max_good
+        remove_max = current_links - min_good
+        if remove_min < 0:
+            remove_min = 0
+        links_available = f"-{remove_min} to -{remove_max}"
+    else:
+        status = "good"
+        headroom = max_good - current_links
+        if headroom > 0:
+            links_available = f"0 to +{headroom}"
+        else:
+            links_available = "0"
 
     return PageResult(
         url=result.url,
@@ -351,6 +376,7 @@ async def analyze_page_summary(
         internal_link_count=result.internal_links.total,
         target_link_count=result.internal_links.to_target_pages,
         link_density=result.link_density,
+        links_available=links_available,
         status=status,
         keyword_relevance=keyword_relevance,
     )

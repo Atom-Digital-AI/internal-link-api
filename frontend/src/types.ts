@@ -40,7 +40,8 @@ export interface PageResult {
   internal_link_count: number;
   target_link_count: number;
   link_density: number;
-  status: 'good' | 'needs_links' | 'failed';
+  links_available: string;
+  status: 'low' | 'good' | 'high' | 'failed';
   error: string | null;
   lastmod: string | null;
   keyword_relevance: number | null;  // 0-5 relevance score when filter is active
@@ -66,8 +67,9 @@ export interface BulkAnalyzeResponse {
   results: PageResult[];
   summary: {
     total_scanned: number;
-    needs_links: number;
-    has_good_density: number;
+    low_density: number;
+    good_density: number;
+    high_density: number;
     failed: number;
   };
   target_page_info: TargetPageInfo | null;  // Info about the target page when filter is active
@@ -182,8 +184,9 @@ export interface SavedSession {
   results: PageResult[];
   summary: {
     total_scanned: number;
-    needs_links: number;
-    has_good_density: number;
+    low_density: number;
+    good_density: number;
+    high_density: number;
     failed: number;
   };
   // Filter options (optional for backwards compatibility)

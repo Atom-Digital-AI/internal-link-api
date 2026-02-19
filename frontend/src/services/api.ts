@@ -117,7 +117,6 @@ export async function analyzePage(
 export async function bulkAnalyze(
   urls: string[],
   targetPattern: string,
-  linkRatioThreshold: number = 500,
   filterOptions?: FilterOptions,
   token?: string | null
 ): Promise<BulkAnalyzeResponse> {
@@ -128,7 +127,6 @@ export async function bulkAnalyze(
       body: JSON.stringify({
         urls,
         target_pattern: targetPattern,
-        link_ratio_threshold: linkRatioThreshold,
         ...(filterOptions?.targetUrl && { filter_target_url: filterOptions.targetUrl }),
         ...(filterOptions?.keyword && { filter_keyword: filterOptions.keyword }),
         ...(filterOptions && { filter_match_type: filterOptions.matchType }),

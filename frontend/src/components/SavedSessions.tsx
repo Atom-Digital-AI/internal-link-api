@@ -36,8 +36,9 @@ export function SavedSessions({ sessions, onLoad, onDelete, onClose }: SavedSess
                 </div>
                 <div className="session-stats">
                   <span>{session.summary.total_scanned} pages</span>
-                  <span className="needs">{session.summary.needs_links} need links</span>
-                  <span className="good">{session.summary.has_good_density} good</span>
+                  <span className="low">{session.summary.low_density} low</span>
+                  <span className="good">{session.summary.good_density} good</span>
+                  <span className="high">{session.summary.high_density ?? 0} high</span>
                 </div>
               </div>
               <div className="session-actions">
