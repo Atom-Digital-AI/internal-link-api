@@ -27,6 +27,9 @@ class User(Base):
     reset_token_expires: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    downgraded_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     # Relationships
     subscriptions: Mapped[list["Subscription"]] = relationship(
@@ -138,3 +141,26 @@ class AiUsage(Base):
 
     # Relationships
     user: Mapped["User"] = relationship("User", back_populates="ai_usage")
+
+
+class BlogPost(Base):
+    __tablename__ = "blog_posts"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    slug: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    excerpt: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    html_content: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    cover_image: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    published: Mapped[bool] = mapped_column(default=False)
+    published_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
