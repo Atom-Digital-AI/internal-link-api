@@ -10,6 +10,9 @@ from pydantic import BaseModel, EmailStr
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from google.auth.transport import requests as google_requests
+from google.oauth2 import id_token as google_id_token
+
 from auth.dependencies import get_current_user as get_current_user_dep
 from auth.utils import (
     create_access_token,
@@ -26,6 +29,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 user_router = APIRouter(prefix="/user", tags=["user"])
 
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
 
 
 # ---------------------------------------------------------------------------
@@ -43,6 +47,10 @@ class LoginRequest(BaseModel):
     email: EmailStr
     password: str
     remember_me: bool = False
+
+
+class GoogleAuthRequest(BaseModel):
+    credential: str  # Google ID token from frontend
 
 
 class TokenResponse(BaseModel):
@@ -140,7 +148,7 @@ async def login(
     result = await db.execute(select(User).where(User.email == request_body.email))
     user = result.scalar_one_or_none()
 
-    if user is None or not verify_password(request_body.password, user.password_hash):
+    if user is None or not user.password_hash or not verify_password(request_body.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail=_INVALID_MSG
         )
@@ -149,6 +157,73 @@ async def login(
     access_token = create_access_token(user_id)
     refresh_tok = create_refresh_token(user_id, remember_me=request_body.remember_me)
     _set_refresh_cookie(response, refresh_tok, remember_me=request_body.remember_me)
+
+    return TokenResponse(access_token=access_token)
+
+
+# ---------------------------------------------------------------------------
+# POST /auth/google
+# ---------------------------------------------------------------------------
+
+
+@router.post("/google", response_model=TokenResponse)
+async def google_auth(
+    request_body: GoogleAuthRequest,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+) -> TokenResponse:
+    """Authenticate or register via Google Sign-In."""
+    if not GOOGLE_CLIENT_ID:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Google Sign-In is not configured.",
+        )
+
+    try:
+        idinfo = google_id_token.verify_oauth2_token(
+            request_body.credential,
+            google_requests.Request(),
+            GOOGLE_CLIENT_ID,
+        )
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid Google token.",
+        )
+
+    google_id = idinfo["sub"]
+    email = idinfo.get("email", "").lower()
+
+    if not email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Google account has no email address.",
+        )
+
+    # 1. Check if user exists by google_id
+    result = await db.execute(select(User).where(User.google_id == google_id))
+    user = result.scalar_one_or_none()
+
+    if user is None:
+        # 2. Check if user exists by email (link accounts)
+        result = await db.execute(select(User).where(User.email == email))
+        user = result.scalar_one_or_none()
+
+        if user is not None:
+            # Link Google account to existing email user
+            user.google_id = google_id
+            await db.flush()
+        else:
+            # 3. Create new user (Google-only, no password)
+            user = User(email=email, google_id=google_id)
+            db.add(user)
+            await db.flush()
+            await db.refresh(user)
+
+    user_id = str(user.id)
+    access_token = create_access_token(user_id)
+    refresh_tok = create_refresh_token(user_id)
+    _set_refresh_cookie(response, refresh_tok)
 
     return TokenResponse(access_token=access_token)
 
@@ -392,7 +467,7 @@ async def update_email(
     Requires current password verification to prevent account takeover
     if a session token is somehow compromised.
     """
-    if not verify_password(request_body.current_password, current_user.password_hash):
+    if current_user.password_hash and not verify_password(request_body.current_password, current_user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Current password is incorrect.",
@@ -454,7 +529,7 @@ async def change_password(
             detail="New passwords do not match.",
         )
 
-    if not verify_password(request_body.current_password, current_user.password_hash):
+    if current_user.password_hash and not verify_password(request_body.current_password, current_user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Current password is incorrect.",
