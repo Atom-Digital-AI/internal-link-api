@@ -10,7 +10,7 @@ import type {
 } from './types';
 import { getConfig, getSitemap, analyzePage, fetchTargetPage, createSession as apiCreateSession, deleteSession as apiDeleteSession, getSessions as apiGetSessions, updateSession as apiUpdateSession } from './services/api';
 import { calculateKeywordRelevance, buildKeywordList } from './utils/keywordRelevance';
-import { getSavedSessions, saveSession, deleteSession, createSession, pruneRecentSessions, updateSessionSaved } from './services/storage';
+import { getSavedSessions, saveSession, deleteSession, createSession, pruneRecentSessions } from './services/storage';
 import { ContextualEditor } from './components/detail';
 import { SavedSessions } from './components/SavedSessions';
 import { SessionSidebar } from './components/SessionSidebar';
