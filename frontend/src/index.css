@@ -137,3 +137,13 @@ body {
 ::selection {
   background: rgba(0, 113, 227, 0.15);
 }
+
+/* Auth split layout responsive */
+@media (max-width: 768px) {
+  .auth-brand-panel {
+    display: none !important;
+  }
+  .auth-mobile-logo {
+    display: flex !important;
+  }
+}

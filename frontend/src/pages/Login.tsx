@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import linkiLogo from '../media/images/logos/Linki Logo - No Spacing - Transparent.png';
 
 export default function Login() {
   const { login } = useAuth()
@@ -28,145 +29,190 @@ export default function Login() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'var(--chrome-bg)',
       display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: 'var(--sp-6)',
+      fontFamily: 'var(--font-sans)',
     }}>
+      {/* Left brand panel — hidden on mobile */}
+      <div style={{
+        flex: '1',
+        background: '#F5F5F7',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '48px',
+        gap: '32px',
+      }} className="auth-brand-panel">
+        <img src={linkiLogo} alt="Linki" style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
+        <div style={{ textAlign: 'center' }}>
+          <h1 style={{ margin: '0 0 8px', fontSize: '2rem', fontWeight: 700, color: '#1D1D1F', letterSpacing: '-0.03em' }}>Linki</h1>
+          <p style={{ margin: 0, fontSize: '1.0625rem', color: '#6E6E73' }}>Smart internal linking for better SEO</p>
+        </div>
+        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          {['AI-powered link suggestions', 'One-click implementation', 'Track link health across your site'].map(item => (
+            <li key={item} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9375rem', color: '#1D1D1F' }}>
+              <span style={{ color: '#0071E3', fontWeight: 700, fontSize: '1rem' }}>✓</span>
+              {item}
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {/* Right form panel */}
       <div style={{
         width: '100%',
-        maxWidth: '400px',
-        background: '#1e293b',
-        borderRadius: 'var(--radius-xl)',
-        padding: 'var(--sp-8)',
-        border: '1px solid var(--chrome-border)',
+        maxWidth: '480px',
+        background: '#FFFFFF',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '48px 40px',
+        borderLeft: '1px solid rgba(0,0,0,0.06)',
       }}>
-        <div style={{ textAlign: 'center', marginBottom: 'var(--sp-8)' }}>
-          <div style={{
-            width: '48px',
-            height: '48px',
-            background: 'var(--brand-gradient)',
-            borderRadius: 'var(--radius-md)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            margin: '0 auto var(--sp-4)',
-            fontWeight: 900,
-            fontSize: '1.125rem',
-            color: 'white',
-          }}>IL</div>
-          <h1 style={{ color: 'var(--chrome-text)', fontSize: 'var(--text-2xl)', fontWeight: 700, margin: 0 }}>
-            Sign in
-          </h1>
-          <p style={{ color: 'var(--chrome-text-muted)', marginTop: 'var(--sp-2)', fontSize: 'var(--text-sm)' }}>
-            Welcome back to Internal Link Finder
-          </p>
+        {/* Mobile-only logo */}
+        <div className="auth-mobile-logo" style={{ display: 'none', flexDirection: 'column', alignItems: 'center', gap: '12px', marginBottom: '32px' }}>
+          <img src={linkiLogo} alt="Linki" style={{ width: '48px', height: '48px', objectFit: 'contain' }} />
+          <span style={{ fontSize: '1.25rem', fontWeight: 700, color: '#1D1D1F', letterSpacing: '-0.02em' }}>Linki</span>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)' }}>
+        <div style={{ width: '100%', maxWidth: '360px' }}>
+          <h2 style={{ margin: '0 0 8px', fontSize: '1.5rem', fontWeight: 700, color: '#1D1D1F', letterSpacing: '-0.02em' }}>Sign in</h2>
+          <p style={{ margin: '0 0 32px', fontSize: '0.875rem', color: '#6E6E73' }}>Welcome back</p>
+
           {error && (
             <div style={{
-              background: 'var(--color-danger-bg)',
-              border: '1px solid var(--color-danger-border)',
-              borderRadius: 'var(--radius-md)',
-              padding: 'var(--sp-3) var(--sp-4)',
-              color: 'var(--color-danger-text)',
-              fontSize: 'var(--text-sm)',
+              background: '#FFF2F1',
+              border: '1px solid rgba(255,59,48,0.20)',
+              borderRadius: '10px',
+              padding: '12px 16px',
+              color: '#D70015',
+              fontSize: '0.875rem',
+              marginBottom: '20px',
             }}>
               {error}
             </div>
           )}
 
-          <div>
-            <label style={{ display: 'block', color: 'var(--chrome-text-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--sp-2)' }}>
-              Email
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              required
-              autoComplete="email"
-              style={{
-                width: '100%',
-                padding: 'var(--sp-3) var(--sp-4)',
-                background: '#0f172a',
-                border: '1px solid var(--chrome-border)',
-                borderRadius: 'var(--radius-md)',
-                color: 'var(--chrome-text)',
-                fontSize: 'var(--text-base)',
-                boxSizing: 'border-box',
-              }}
-            />
-          </div>
-
-          <div>
-            <label style={{ display: 'block', color: 'var(--chrome-text-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--sp-2)' }}>
-              Password
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              required
-              autoComplete="current-password"
-              style={{
-                width: '100%',
-                padding: 'var(--sp-3) var(--sp-4)',
-                background: '#0f172a',
-                border: '1px solid var(--chrome-border)',
-                borderRadius: 'var(--radius-md)',
-                color: 'var(--chrome-text)',
-                fontSize: 'var(--text-base)',
-                boxSizing: 'border-box',
-              }}
-            />
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)', cursor: 'pointer', color: 'var(--chrome-text-muted)', fontSize: 'var(--text-sm)' }}>
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 500, color: '#1D1D1F', marginBottom: '6px' }}>
+                Email
+              </label>
               <input
-                type="checkbox"
-                checked={rememberMe}
-                onChange={e => setRememberMe(e.target.checked)}
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                required
+                placeholder="you@example.com"
+                style={{
+                  width: '100%',
+                  padding: '11px 14px',
+                  background: '#F5F5F7',
+                  border: '1.5px solid transparent',
+                  borderRadius: '10px',
+                  fontSize: '0.9375rem',
+                  color: '#1D1D1F',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                  transition: 'border-color 150ms, background 150ms, box-shadow 150ms',
+                }}
+                onFocus={e => {
+                  e.target.style.background = '#FFF';
+                  e.target.style.borderColor = '#0071E3';
+                  e.target.style.boxShadow = '0 0 0 3px rgba(0,113,227,0.15)';
+                }}
+                onBlur={e => {
+                  e.target.style.background = '#F5F5F7';
+                  e.target.style.borderColor = 'transparent';
+                  e.target.style.boxShadow = 'none';
+                }}
               />
-              Remember me
-            </label>
-            <Link
-              to="/forgot-password"
-              style={{ color: 'var(--chrome-accent)', fontSize: 'var(--text-sm)', textDecoration: 'none' }}
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 500, color: '#1D1D1F', marginBottom: '6px' }}>
+                Password
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                required
+                placeholder="••••••••"
+                style={{
+                  width: '100%',
+                  padding: '11px 14px',
+                  background: '#F5F5F7',
+                  border: '1.5px solid transparent',
+                  borderRadius: '10px',
+                  fontSize: '0.9375rem',
+                  color: '#1D1D1F',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                  transition: 'border-color 150ms, background 150ms, box-shadow 150ms',
+                }}
+                onFocus={e => {
+                  e.target.style.background = '#FFF';
+                  e.target.style.borderColor = '#0071E3';
+                  e.target.style.boxShadow = '0 0 0 3px rgba(0,113,227,0.15)';
+                }}
+                onBlur={e => {
+                  e.target.style.background = '#F5F5F7';
+                  e.target.style.borderColor = 'transparent';
+                  e.target.style.boxShadow = 'none';
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8125rem', color: '#6E6E73', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={e => setRememberMe(e.target.checked)}
+                />
+                Remember me
+              </label>
+              <Link to="/forgot-password" style={{ fontSize: '0.8125rem', color: '#0071E3', textDecoration: 'none' }}
+                onMouseEnter={e => (e.currentTarget.style.textDecoration = 'underline')}
+                onMouseLeave={e => (e.currentTarget.style.textDecoration = 'none')}
+              >
+                Forgot password?
+              </Link>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              style={{
+                width: '100%',
+                padding: '13px',
+                background: loading ? '#AEAEB2' : '#0071E3',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '980px',
+                fontSize: '1rem',
+                fontWeight: 600,
+                cursor: loading ? 'not-allowed' : 'pointer',
+                marginTop: '8px',
+                transition: 'background 150ms',
+              }}
             >
-              Forgot password?
+              {loading ? 'Signing in…' : 'Sign in'}
+            </button>
+          </form>
+
+          <p style={{ marginTop: '24px', textAlign: 'center', fontSize: '0.875rem', color: '#6E6E73' }}>
+            Don't have an account?{' '}
+            <Link to="/register" style={{ color: '#0071E3', textDecoration: 'none', fontWeight: 500 }}
+              onMouseEnter={e => (e.currentTarget.style.textDecoration = 'underline')}
+              onMouseLeave={e => (e.currentTarget.style.textDecoration = 'none')}
+            >
+              Create account
             </Link>
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            style={{
-              width: '100%',
-              padding: 'var(--sp-3) var(--sp-4)',
-              background: 'var(--brand-gradient)',
-              border: 'none',
-              borderRadius: 'var(--radius-md)',
-              color: 'white',
-              fontSize: 'var(--text-base)',
-              fontWeight: 600,
-              cursor: loading ? 'not-allowed' : 'pointer',
-              opacity: loading ? 0.7 : 1,
-            }}
-          >
-            {loading ? 'Signing in…' : 'Sign in'}
-          </button>
-        </form>
-
-        <p style={{ textAlign: 'center', color: 'var(--chrome-text-muted)', fontSize: 'var(--text-sm)', marginTop: 'var(--sp-6)' }}>
-          Don't have an account?{' '}
-          <Link to="/register" style={{ color: 'var(--chrome-accent)', textDecoration: 'none' }}>
-            Create account
-          </Link>
-        </p>
+          </p>
+        </div>
       </div>
     </div>
   )
