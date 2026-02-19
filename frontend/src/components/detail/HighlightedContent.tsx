@@ -177,14 +177,18 @@ export function HighlightedContent({
       const isEmptyLine = line.trim() === '';
       const isLastLine = i === lines.length - 1;
 
+      // Collapse consecutive empty lines into a single paragraph break
+      if (isEmptyLine) {
+        const prevLine = i > 0 ? lines[i - 1].trim() : '';
+        if (prevLine === '') return null; // skip consecutive empty lines
+        return (
+          <span key={`${keyPrefix}-line-${i}`} className="markdown-paragraph-break" />
+        );
+      }
+
       return (
         <Fragment key={`${keyPrefix}-line-${i}`}>
-          {isEmptyLine ? (
-            // Empty lines create paragraph breaks
-            <span className="markdown-paragraph-break" />
-          ) : (
-            renderMarkdownLine(line, `${keyPrefix}-content-${i}`)
-          )}
+          {renderMarkdownLine(line, `${keyPrefix}-content-${i}`)}
           {!isLastLine && <br />}
         </Fragment>
       );
