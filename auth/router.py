@@ -63,6 +63,8 @@ class UserMeResponse(BaseModel):
     email: str
     plan: str
     created_at: datetime
+    has_google: bool = False
+    has_password: bool = True
 
 
 # ---------------------------------------------------------------------------
@@ -379,6 +381,8 @@ async def get_me(
         email=current_user.email,
         plan=current_user.plan,
         created_at=current_user.created_at,
+        has_google=current_user.google_id is not None,
+        has_password=current_user.password_hash is not None,
     )
 
 
@@ -498,6 +502,8 @@ async def update_email(
         email=current_user.email,
         plan=current_user.plan,
         created_at=current_user.created_at,
+        has_google=current_user.google_id is not None,
+        has_password=current_user.password_hash is not None,
     )
 
 
