@@ -135,6 +135,21 @@ export default function MarketingNav() {
               >
                 Go to App
               </Link>
+              <Link
+                to="/account"
+                style={{
+                  border: "1.5px solid rgba(0,0,0,0.15)",
+                  borderRadius: "980px",
+                  padding: "8px 20px",
+                  color: "#1D1D1F",
+                  background: "transparent",
+                  fontSize: "0.875rem",
+                  fontWeight: 500,
+                  textDecoration: "none",
+                }}
+              >
+                Account
+              </Link>
               <button
                 onClick={async () => {
                   await logout();
