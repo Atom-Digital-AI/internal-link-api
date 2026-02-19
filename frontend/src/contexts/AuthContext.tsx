@@ -7,6 +7,8 @@ interface User {
   email: string
   plan: 'free' | 'starter' | 'pro'
   created_at: string
+  has_google: boolean
+  has_password: boolean
 }
 
 interface AuthContextValue {
@@ -16,6 +18,7 @@ interface AuthContextValue {
   login: (email: string, password: string, rememberMe?: boolean) => Promise<void>
   logout: () => Promise<void>
   register: (email: string, password: string, confirmPassword: string) => Promise<void>
+  googleLogin: (credential: string) => Promise<void>
   setAccessToken: (token: string | null) => void
   refreshUser: () => Promise<void>
 }
@@ -84,6 +87,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [fetchMe]
   )
 
+  const googleLogin = useCallback(
+    async (credential: string) => {
+      const res = await fetch(`${API_BASE}/auth/google`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ credential }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: 'Google sign-in failed.' }))
+        throw new Error(err.detail || 'Google sign-in failed.')
+      }
+      const data = await res.json()
+      const token: string = data.access_token
+      setAccessToken(token)
+      const me = await fetchMe(token)
+      setUser(me)
+    },
+    [fetchMe]
+  )
+
   const logout = useCallback(async () => {
     try {
       await fetch(`${API_BASE}/auth/logout`, {
@@ -128,7 +152,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, accessToken, isLoading, login, logout, register, setAccessToken, refreshUser }}
+      value={{ user, accessToken, isLoading, login, logout, register, googleLogin, setAccessToken, refreshUser }}
     >
       {children}
     </AuthContext.Provider>
