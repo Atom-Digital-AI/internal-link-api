@@ -148,9 +148,6 @@ export function HighlightedContent({
 
     if (highlight.type === 'existing-link') {
       classes.push('highlight--existing');
-      if (highlight.metadata.linkInfo?.is_target) {
-        classes.push('highlight--target');
-      }
     } else {
       classes.push('highlight--suggestion');
 
