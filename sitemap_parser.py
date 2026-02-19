@@ -27,7 +27,7 @@ async def check_robots_txt(client: httpx.AsyncClient, domain: str) -> list[str]:
     return urls
 
 
-async def fetch_sitemap(domain: str, source_pattern: str, target_pattern: str) -> dict:
+async def fetch_sitemap(domain: str, source_pattern: str, target_pattern: str, max_crawl_pages: int = 50) -> dict:
     """
     Fetch and parse a site's sitemap to get all URLs.
     Returns categorized lists of source and target pages.
@@ -71,6 +71,18 @@ async def fetch_sitemap(domain: str, source_pattern: str, target_pattern: str) -
             except httpx.RequestError:
                 continue
 
+    discovery_method = "sitemap"
+
+    # Fallback: if no sitemap found, crawl the site
+    if not all_urls:
+        try:
+            from fallback_crawler import crawl_site
+
+            discovery_method = "crawl"
+            all_urls = await crawl_site(domain, max_crawl_pages)
+        except Exception:
+            pass  # Return empty results rather than 500
+
     # Filter URLs by patterns
     source_pages = [
         page for page in all_urls if source_pattern.lower() in page.url.lower()
@@ -84,6 +96,7 @@ async def fetch_sitemap(domain: str, source_pattern: str, target_pattern: str) -
         "target_pages": target_pages,
         "total_found": len(all_urls),
         "sitemap_url": sitemap_url,
+        "discovery_method": discovery_method,
     }
 
 

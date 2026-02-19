@@ -14,8 +14,9 @@ from slowapi.util import get_remote_address
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from auth.dependencies import get_current_user
 from database import get_db
-from db_models import BlogPost
+from db_models import BlogPost, User
 
 from models import (
     AnalyzeRequest,
@@ -45,6 +46,7 @@ from blog.router import router as blog_router
 
 # Configurable limits via environment variables
 MAX_BULK_URLS = int(os.environ.get("MAX_BULK_URLS", "100"))
+CRAWL_PAGE_LIMITS = {"free": 10, "starter": 50, "pro": 500}
 
 # ---------------------------------------------------------------------------
 # Rate Limiter
@@ -121,15 +123,18 @@ async def get_config():
 
 
 @app.post("/sitemap", response_model=SitemapResponse)
-async def get_sitemap(request: SitemapRequest):
+async def get_sitemap(request: SitemapRequest, current_user: User = Depends(get_current_user)):
     """
     Fetch and parse a site's sitemap to get all URLs.
     Filters URLs by source_pattern and target_pattern.
+    Falls back to crawling if no sitemap found.
     """
+    max_crawl_pages = CRAWL_PAGE_LIMITS.get(current_user.plan, 10)
     result = await fetch_sitemap(
         str(request.domain),
         request.source_pattern,
         request.target_pattern,
+        max_crawl_pages=max_crawl_pages,
     )
     return SitemapResponse(**result)
 

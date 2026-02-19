@@ -32,19 +32,34 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system dependencies for lxml
+# Install system dependencies for lxml and Playwright
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libxml2-dev \
     libxslt-dev \
+    libnss3 \
+    libatk1.0-0 \
+    libatk-bridge2.0-0 \
+    libcups2 \
+    libdrm2 \
+    libxkbcommon0 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxrandr2 \
+    libgbm1 \
+    libpango-1.0-0 \
+    libcairo2 \
+    libasound2 \
+    libxshmfence1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+RUN crawl4ai-setup
 
 # Copy application code
-COPY main.py models.py scraper.py sitemap_parser.py database.py db_models.py email_service.py ./
+COPY main.py models.py scraper.py sitemap_parser.py fallback_crawler.py database.py db_models.py email_service.py ./
 COPY auth/ ./auth/
 COPY billing/ ./billing/
 COPY blog/ ./blog/
