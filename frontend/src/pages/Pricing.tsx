@@ -67,31 +67,31 @@ export default function Pricing() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'var(--chrome-bg)',
+      background: '#F5F5F7',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
       padding: 'var(--sp-16) var(--sp-6)',
     }}>
       <div style={{ textAlign: 'center', marginBottom: 'var(--sp-8)' }}>
-        <h1 style={{ color: 'var(--chrome-text)', fontSize: 'var(--text-3xl)', fontWeight: 700, margin: 0 }}>
+        <h1 style={{ color: '#1D1D1F', fontSize: 'var(--text-3xl)', fontWeight: 700, margin: 0 }}>
           Simple, transparent pricing
         </h1>
-        <p style={{ color: 'var(--chrome-text-muted)', marginTop: 'var(--sp-3)', fontSize: 'var(--text-base)' }}>
+        <p style={{ color: '#6E6E73', marginTop: 'var(--sp-3)', fontSize: 'var(--text-base)' }}>
           Start free, upgrade when you're ready
         </p>
       </div>
 
       {/* Interval toggle */}
-      <div style={{ display: 'flex', gap: 'var(--sp-2)', marginBottom: 'var(--sp-8)', background: '#1e293b', borderRadius: 'var(--radius-full)', padding: '4px', border: '1px solid var(--chrome-border)' }}>
+      <div style={{ display: 'flex', gap: 'var(--sp-2)', marginBottom: 'var(--sp-8)', background: '#EBEBF0', borderRadius: 'var(--radius-full)', padding: '4px', border: '1px solid rgba(0,0,0,0.08)' }}>
         <button
           onClick={() => setInterval('monthly')}
           style={{
             padding: 'var(--sp-2) var(--sp-5)',
             borderRadius: 'var(--radius-full)',
             border: 'none',
-            background: interval === 'monthly' ? 'var(--brand-gradient)' : 'transparent',
-            color: interval === 'monthly' ? 'white' : 'var(--chrome-text-muted)',
+            background: interval === 'monthly' ? '#0071E3' : 'transparent',
+            color: interval === 'monthly' ? 'white' : '#6E6E73',
             fontWeight: 600,
             cursor: 'pointer',
             fontSize: 'var(--text-sm)',
@@ -105,8 +105,8 @@ export default function Pricing() {
             padding: 'var(--sp-2) var(--sp-5)',
             borderRadius: 'var(--radius-full)',
             border: 'none',
-            background: interval === 'annual' ? 'var(--brand-gradient)' : 'transparent',
-            color: interval === 'annual' ? 'white' : 'var(--chrome-text-muted)',
+            background: interval === 'annual' ? '#0071E3' : 'transparent',
+            color: interval === 'annual' ? 'white' : '#6E6E73',
             fontWeight: 600,
             cursor: 'pointer',
             fontSize: 'var(--text-sm)',
@@ -136,13 +136,14 @@ export default function Pricing() {
         <div style={{
           flex: '1',
           minWidth: '300px',
-          background: '#1e293b',
+          background: '#FFFFFF',
           borderRadius: 'var(--radius-xl)',
           padding: 'var(--sp-8)',
-          border: '1px solid var(--chrome-border)',
+          border: '1px solid rgba(0,0,0,0.06)',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
         }}>
-          <h2 style={{ color: 'var(--chrome-text)', fontSize: 'var(--text-xl)', fontWeight: 700, margin: '0 0 var(--sp-2)' }}>Free</h2>
-          <p style={{ color: 'var(--chrome-text-muted)', fontSize: 'var(--text-3xl)', fontWeight: 700, margin: '0 0 var(--sp-6)' }}>
+          <h2 style={{ color: '#1D1D1F', fontSize: 'var(--text-xl)', fontWeight: 700, margin: '0 0 var(--sp-2)' }}>Free</h2>
+          <p style={{ color: '#6E6E73', fontSize: 'var(--text-3xl)', fontWeight: 700, margin: '0 0 var(--sp-6)' }}>
             $0<span style={{ fontSize: 'var(--text-sm)', fontWeight: 400 }}>/mo</span>
           </p>
           <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 var(--sp-8)', display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
@@ -151,29 +152,29 @@ export default function Pricing() {
               'Basic link analysis',
               'Export results',
             ].map(feature => (
-              <li key={feature} style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)', color: 'var(--chrome-text-muted)', fontSize: 'var(--text-sm)' }}>
-                <span style={{ color: 'var(--chrome-text-muted)' }}>○</span> {feature}
+              <li key={feature} style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)', color: '#1D1D1F', fontSize: 'var(--text-sm)' }}>
+                <span style={{ color: '#6E6E73' }}>○</span> {feature}
               </li>
             ))}
             {[
               'AI suggestions',
               'Saved sessions',
             ].map(feature => (
-              <li key={feature} style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)', color: '#475569', fontSize: 'var(--text-sm)', textDecoration: 'line-through', opacity: 0.5 }}>
+              <li key={feature} style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)', color: '#AEAEB2', fontSize: 'var(--text-sm)', textDecoration: 'line-through', opacity: 0.5 }}>
                 <span>✕</span> {feature}
               </li>
             ))}
           </ul>
           {isPro ? (
-            <p style={{ color: 'var(--chrome-text-muted)', fontSize: 'var(--text-sm)', textAlign: 'center' }}>Your previous plan</p>
+            <p style={{ color: '#6E6E73', fontSize: 'var(--text-sm)', textAlign: 'center' }}>Your previous plan</p>
           ) : (
             <div style={{
               width: '100%',
               padding: 'var(--sp-3) var(--sp-4)',
               background: 'transparent',
-              border: '1px solid var(--chrome-border)',
+              border: '1px solid rgba(0,0,0,0.12)',
               borderRadius: 'var(--radius-md)',
-              color: 'var(--chrome-text-muted)',
+              color: '#6E6E73',
               fontSize: 'var(--text-base)',
               fontWeight: 600,
               textAlign: 'center',
@@ -187,10 +188,11 @@ export default function Pricing() {
         <div style={{
           flex: '1',
           minWidth: '300px',
-          background: '#1e293b',
+          background: '#FFFFFF',
           borderRadius: 'var(--radius-xl)',
           padding: 'var(--sp-8)',
-          border: '2px solid var(--chrome-accent)',
+          border: '2px solid #0071E3',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
           position: 'relative',
         }}>
           <div style={{
@@ -198,7 +200,7 @@ export default function Pricing() {
             top: '-14px',
             left: '50%',
             transform: 'translateX(-50%)',
-            background: 'var(--brand-gradient)',
+            background: '#0071E3',
             color: 'white',
             fontSize: 'var(--text-xs)',
             fontWeight: 700,
@@ -208,9 +210,9 @@ export default function Pricing() {
           }}>
             POPULAR
           </div>
-          <h2 style={{ color: 'var(--chrome-text)', fontSize: 'var(--text-xl)', fontWeight: 700, margin: '0 0 var(--sp-2)' }}>Pro</h2>
-          <p style={{ color: 'var(--chrome-text)', fontSize: 'var(--text-3xl)', fontWeight: 700, margin: '0 0 var(--sp-6)' }}>
-            {monthlyPrice}<span style={{ fontSize: 'var(--text-sm)', fontWeight: 400, color: 'var(--chrome-text-muted)' }}>/mo</span>
+          <h2 style={{ color: '#1D1D1F', fontSize: 'var(--text-xl)', fontWeight: 700, margin: '0 0 var(--sp-2)' }}>Pro</h2>
+          <p style={{ color: '#1D1D1F', fontSize: 'var(--text-3xl)', fontWeight: 700, margin: '0 0 var(--sp-6)' }}>
+            {monthlyPrice}<span style={{ fontSize: 'var(--text-sm)', fontWeight: 400, color: '#6E6E73' }}>/mo</span>
           </p>
           <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 var(--sp-8)', display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
             {[
@@ -220,7 +222,7 @@ export default function Pricing() {
               'Export results',
               'Priority support',
             ].map(feature => (
-              <li key={feature} style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)', color: 'var(--chrome-text)', fontSize: 'var(--text-sm)' }}>
+              <li key={feature} style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)', color: '#1D1D1F', fontSize: 'var(--text-sm)' }}>
                 <span style={{ color: 'var(--color-success)' }}>✓</span> {feature}
               </li>
             ))}
@@ -233,9 +235,9 @@ export default function Pricing() {
                 width: '100%',
                 padding: 'var(--sp-3) var(--sp-4)',
                 background: 'transparent',
-                border: '1px solid var(--chrome-accent)',
-                borderRadius: 'var(--radius-md)',
-                color: 'var(--chrome-accent)',
+                border: '1px solid #0071E3',
+                borderRadius: '980px',
+                color: '#0071E3',
                 fontSize: 'var(--text-base)',
                 fontWeight: 600,
                 cursor: loading ? 'not-allowed' : 'pointer',
@@ -251,9 +253,9 @@ export default function Pricing() {
               style={{
                 width: '100%',
                 padding: 'var(--sp-3) var(--sp-4)',
-                background: 'var(--brand-gradient)',
+                background: '#0071E3',
                 border: 'none',
-                borderRadius: 'var(--radius-md)',
+                borderRadius: '980px',
                 color: 'white',
                 fontSize: 'var(--text-base)',
                 fontWeight: 600,
