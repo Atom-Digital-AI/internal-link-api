@@ -644,7 +644,7 @@ export default function Account() {
             Account
           </h1>
           <Link
-            to="/"
+            to="/app"
             style={{ color: '#6E6E73', fontSize: 'var(--text-sm)', textDecoration: 'none' }}
           >
             ← Back to app
