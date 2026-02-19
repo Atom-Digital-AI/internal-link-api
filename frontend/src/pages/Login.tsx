@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import linkiLogo from '../media/images/logos/Linki Logo - No Spacing - Transparent.png';
+import linkiLogo from '../../media/images/logos/Linki Logo - No Spacing - Transparent.png';
 
 export default function Login() {
   const { login } = useAuth()

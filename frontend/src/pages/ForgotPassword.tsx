@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import linkiLogo from '../media/images/logos/Linki Logo - No Spacing - Transparent.png'
+import linkiLogo from '../../media/images/logos/Linki Logo - No Spacing - Transparent.png'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
 

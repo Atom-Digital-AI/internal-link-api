@@ -7,7 +7,6 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
 export default function Pricing() {
   const { user, accessToken } = useAuth()
   const navigate = useNavigate()
-  const [interval, setInterval] = useState<'monthly' | 'annual'>('monthly')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -26,7 +25,7 @@ export default function Pricing() {
           ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         },
         credentials: 'include',
-        body: JSON.stringify({ interval }),
+        body: JSON.stringify({ interval: 'monthly' }),
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({ detail: 'Failed to create checkout session.' }))
@@ -62,7 +61,6 @@ export default function Pricing() {
   }
 
   const isPro = user?.plan === 'pro'
-  const monthlyPrice = interval === 'monthly' ? '$29' : '$24'
 
   return (
     <div style={{
@@ -80,40 +78,6 @@ export default function Pricing() {
         <p style={{ color: '#6E6E73', marginTop: 'var(--sp-3)', fontSize: 'var(--text-base)' }}>
           Start free, upgrade when you're ready
         </p>
-      </div>
-
-      {/* Interval toggle */}
-      <div style={{ display: 'flex', gap: 'var(--sp-2)', marginBottom: 'var(--sp-8)', background: '#EBEBF0', borderRadius: 'var(--radius-full)', padding: '4px', border: '1px solid rgba(0,0,0,0.08)' }}>
-        <button
-          onClick={() => setInterval('monthly')}
-          style={{
-            padding: 'var(--sp-2) var(--sp-5)',
-            borderRadius: 'var(--radius-full)',
-            border: 'none',
-            background: interval === 'monthly' ? '#0071E3' : 'transparent',
-            color: interval === 'monthly' ? 'white' : '#6E6E73',
-            fontWeight: 600,
-            cursor: 'pointer',
-            fontSize: 'var(--text-sm)',
-          }}
-        >
-          Monthly
-        </button>
-        <button
-          onClick={() => setInterval('annual')}
-          style={{
-            padding: 'var(--sp-2) var(--sp-5)',
-            borderRadius: 'var(--radius-full)',
-            border: 'none',
-            background: interval === 'annual' ? '#0071E3' : 'transparent',
-            color: interval === 'annual' ? 'white' : '#6E6E73',
-            fontWeight: 600,
-            cursor: 'pointer',
-            fontSize: 'var(--text-sm)',
-          }}
-        >
-          Annual <span style={{ fontSize: 'var(--text-xs)', opacity: 0.85 }}>(2 months free)</span>
-        </button>
       </div>
 
       {error && (
@@ -212,7 +176,7 @@ export default function Pricing() {
           </div>
           <h2 style={{ color: '#1D1D1F', fontSize: 'var(--text-xl)', fontWeight: 700, margin: '0 0 var(--sp-2)' }}>Pro</h2>
           <p style={{ color: '#1D1D1F', fontSize: 'var(--text-3xl)', fontWeight: 700, margin: '0 0 var(--sp-6)' }}>
-            {monthlyPrice}<span style={{ fontSize: 'var(--text-sm)', fontWeight: 400, color: '#6E6E73' }}>/mo</span>
+            £14.99<span style={{ fontSize: 'var(--text-sm)', fontWeight: 400, color: '#6E6E73' }}>/mo</span>
           </p>
           <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 var(--sp-8)', display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
             {[

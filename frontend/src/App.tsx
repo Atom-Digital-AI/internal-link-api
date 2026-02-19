@@ -505,12 +505,12 @@ function App() {
       {/* ── DARK HEADER ── */}
       <header className="app-header">
         <div className="app-header__inner">
-          <div className="app-header__brand">
+          <Link to="/" className="app-header__brand">
             <div className="app-header__logo">
-              <img src={linkiLogo} alt="Linki" />
+              <img src={linkiLogo} alt="" />
             </div>
-            <h1 className="app-header__title">Linki</h1>
-          </div>
+            <span className="app-header__title">Linki</span>
+          </Link>
 
           <nav className="step-nav" aria-label="Progress">
             {STEPS.map((s, i) => (
