@@ -200,26 +200,28 @@ export function ContextualEditor({
     <div className="contextual-editor">
       {showAiProModal && (
         <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999,
         }}>
           <div style={{
-            background: '#1e293b', borderRadius: '12px', padding: '32px',
-            maxWidth: '400px', width: '90%', border: '1px solid #334155', textAlign: 'center',
+            background: '#FFFFFF', borderRadius: '12px', padding: '32px',
+            maxWidth: '400px', width: '90%', border: '1px solid rgba(0,0,0,0.08)',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.15)', textAlign: 'center',
           }}>
             <div style={{ fontSize: '2rem', marginBottom: '12px' }}>🤖</div>
-            <h2 style={{ color: '#e2e8f0', fontSize: '1.25rem', fontWeight: 700, margin: '0 0 8px' }}>
+            <h2 style={{ color: '#1D1D1F', fontSize: '1.25rem', fontWeight: 700, margin: '0 0 8px' }}>
               AI Suggestions is a Pro feature
             </h2>
-            <p style={{ color: '#94a3b8', fontSize: '0.875rem', margin: '0 0 24px' }}>
+            <p style={{ color: '#6E6E73', fontSize: '0.875rem', margin: '0 0 24px' }}>
               Upgrade to Pro to get AI-powered link suggestions, 500 URLs/scan, and unlimited saved sessions.
             </p>
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
               <Link
                 to="/pricing"
                 style={{
-                  padding: '8px 20px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                  borderRadius: '6px', color: 'white', textDecoration: 'none', fontWeight: 600, fontSize: '0.875rem',
+                  padding: '8px 20px', background: '#0071E3',
+                  borderRadius: '980px', border: 'none', color: '#fff',
+                  textDecoration: 'none', fontWeight: 600, fontSize: '0.875rem',
                 }}
               >
                 Upgrade to Pro
@@ -227,8 +229,8 @@ export function ContextualEditor({
               <button
                 onClick={() => setShowAiProModal(false)}
                 style={{
-                  padding: '8px 20px', background: 'transparent', border: '1px solid #475569',
-                  borderRadius: '6px', color: '#94a3b8', cursor: 'pointer', fontSize: '0.875rem',
+                  padding: '8px 20px', background: '#F5F5F7', border: '1px solid transparent',
+                  borderRadius: '980px', color: '#1D1D1F', cursor: 'pointer', fontSize: '0.875rem',
                 }}
               >
                 Cancel
