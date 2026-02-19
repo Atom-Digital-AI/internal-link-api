@@ -175,7 +175,6 @@ export function HighlightedContent({
 
     return lines.map((line, i) => {
       const isEmptyLine = line.trim() === '';
-      const isLastLine = i === lines.length - 1;
 
       // Collapse consecutive empty lines into a single paragraph break
       if (isEmptyLine) {
