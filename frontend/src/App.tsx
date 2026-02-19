@@ -593,10 +593,10 @@ function App() {
                   <span className="header-btn__text">🔒 Sessions</span>
                 </Link>
               </Tooltip>
-            ) : savedSessions.length > 0 && (
+            ) : (
               <button onClick={() => setShowSavedSessions(true)} className="header-btn">
                 <span className="header-btn__text">Sessions</span>
-                <span className="header-btn__badge">{savedSessions.length}</span>
+                {savedSessions.length > 0 && <span className="header-btn__badge">{savedSessions.length}</span>}
               </button>
             )}
             <Link to="/account" className="header-btn" style={{ textDecoration: 'none' }}>
