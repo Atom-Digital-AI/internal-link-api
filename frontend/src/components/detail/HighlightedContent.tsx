@@ -1,4 +1,4 @@
-import { useMemo, Fragment, type ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import type { TextRange, SuggestionStatus } from '../../types';
 
 interface HighlightedContentProps {
@@ -186,12 +186,7 @@ export function HighlightedContent({
         );
       }
 
-      return (
-        <Fragment key={`${keyPrefix}-line-${i}`}>
-          {renderMarkdownLine(line, `${keyPrefix}-content-${i}`)}
-          {!isLastLine && <br />}
-        </Fragment>
-      );
+      return renderMarkdownLine(line, `${keyPrefix}-content-${i}`);
     });
   };
 
