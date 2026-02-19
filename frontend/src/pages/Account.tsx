@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import { GoogleLogin } from '@react-oauth/google'
 import { useAuth } from '../contexts/AuthContext'
 import {
   getBillingPortal,
@@ -263,7 +264,7 @@ function AccountDetailsCard() {
 // ─── Change Password card ──────────────────────────────────────────────────
 
 function ChangePasswordCard() {
-  const { accessToken } = useAuth()
+  const { user, accessToken } = useAuth()
   const [currentPw, setCurrentPw] = useState('')
   const [newPw, setNewPw] = useState('')
   const [confirmPw, setConfirmPw] = useState('')
@@ -297,23 +298,25 @@ function ChangePasswordCard() {
 
   return (
     <div style={card}>
-      <p style={sectionTitle}>Change Password</p>
+      <p style={sectionTitle}>{user?.has_password ? 'Change Password' : 'Set Password'}</p>
 
       {error && <ErrorBanner message={error} />}
       {success && <SuccessBanner message={success} />}
 
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
-        <div>
-          <label style={label}>Current password</label>
-          <input
-            type="password"
-            value={currentPw}
-            onChange={e => setCurrentPw(e.target.value)}
-            required
-            autoComplete="current-password"
-            style={input}
-          />
-        </div>
+        {user?.has_password && (
+          <div>
+            <label style={label}>Current password</label>
+            <input
+              type="password"
+              value={currentPw}
+              onChange={e => setCurrentPw(e.target.value)}
+              required
+              autoComplete="current-password"
+              style={input}
+            />
+          </div>
+        )}
         <div>
           <label style={label}>New password</label>
           <input
@@ -349,6 +352,68 @@ function ChangePasswordCard() {
           </button>
         </div>
       </form>
+    </div>
+  )
+}
+
+// ─── Google Link card ───────────────────────────────────────────────────────
+
+function GoogleLinkCard() {
+  const { user, accessToken, refreshUser } = useAuth()
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  const handleLink = async (credentialResponse: { credential?: string }) => {
+    if (!credentialResponse.credential) return
+    setError(null)
+    setSuccess(null)
+    setLoading(true)
+    try {
+      const API_BASE = import.meta.env.VITE_API_URL || ''
+      const res = await fetch(`${API_BASE}/auth/google/link`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ credential: credentialResponse.credential }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: 'Failed to link Google account.' }))
+        throw new Error(err.detail || 'Failed to link Google account.')
+      }
+      setSuccess('Google account linked successfully.')
+      await refreshUser()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to link Google account.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div style={card}>
+      <p style={sectionTitle}>Google Account</p>
+
+      {error && <ErrorBanner message={error} />}
+      {success && <SuccessBanner message={success} />}
+
+      {user?.has_google ? (
+        <p style={inlineMeta}>Your Google account is linked. You can sign in with Google.</p>
+      ) : (
+        <div>
+          <p style={{ ...inlineMeta, marginBottom: 'var(--sp-3)' }}>
+            Link your Google account for faster sign-in.
+          </p>
+          <GoogleLogin
+            onSuccess={handleLink}
+            onError={() => setError('Failed to link Google account.')}
+            size="large"
+            text="signin_with"
+          />
+        </div>
+      )}
     </div>
   )
 }
@@ -658,6 +723,7 @@ export default function Account() {
 
         <AccountDetailsCard />
         <ChangePasswordCard />
+        <GoogleLinkCard />
         <SubscriptionCard
           subscription={subscription}
           usage={usage}
