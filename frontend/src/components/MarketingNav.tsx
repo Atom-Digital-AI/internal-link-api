@@ -8,6 +8,28 @@ export default function MarketingNav() {
   const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
 
+  const pillLink: React.CSSProperties = {
+    border: "1.5px solid rgba(0,0,0,0.15)",
+    borderRadius: "980px",
+    padding: "8px 20px",
+    color: "#1D1D1F",
+    background: "transparent",
+    fontSize: "0.875rem",
+    fontWeight: 500,
+    textDecoration: "none",
+  };
+
+  const pillButton: React.CSSProperties = {
+    border: "1.5px solid rgba(0,0,0,0.15)",
+    borderRadius: "980px",
+    padding: "8px 20px",
+    color: "#1D1D1F",
+    background: "transparent",
+    fontSize: "0.875rem",
+    fontWeight: 500,
+    cursor: "pointer",
+  };
+
   useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 10);
@@ -122,31 +144,13 @@ export default function MarketingNav() {
             <>
               <Link
                 to="/app"
-                style={{
-                  border: "1.5px solid rgba(0,0,0,0.15)",
-                  borderRadius: "980px",
-                  padding: "8px 20px",
-                  color: "#1D1D1F",
-                  background: "transparent",
-                  fontSize: "0.875rem",
-                  fontWeight: 500,
-                  textDecoration: "none",
-                }}
+                style={pillLink}
               >
                 Go to App
               </Link>
               <Link
                 to="/account"
-                style={{
-                  border: "1.5px solid rgba(0,0,0,0.15)",
-                  borderRadius: "980px",
-                  padding: "8px 20px",
-                  color: "#1D1D1F",
-                  background: "transparent",
-                  fontSize: "0.875rem",
-                  fontWeight: 500,
-                  textDecoration: "none",
-                }}
+                style={pillLink}
               >
                 Account
               </Link>
@@ -155,16 +159,7 @@ export default function MarketingNav() {
                   await logout();
                   navigate("/login");
                 }}
-                style={{
-                  border: "1.5px solid rgba(0,0,0,0.15)",
-                  borderRadius: "980px",
-                  padding: "8px 20px",
-                  color: "#1D1D1F",
-                  background: "transparent",
-                  fontSize: "0.875rem",
-                  fontWeight: 500,
-                  cursor: "pointer",
-                }}
+                style={pillButton}
               >
                 Sign out
               </button>
@@ -173,16 +168,7 @@ export default function MarketingNav() {
             <>
               <Link
                 to="/login"
-                style={{
-                  border: "1.5px solid rgba(0,0,0,0.15)",
-                  borderRadius: "980px",
-                  padding: "8px 20px",
-                  color: "#1D1D1F",
-                  background: "transparent",
-                  fontSize: "0.875rem",
-                  fontWeight: 500,
-                  textDecoration: "none",
-                }}
+                style={pillLink}
               >
                 Sign in
               </Link>
