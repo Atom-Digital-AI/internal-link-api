@@ -932,7 +932,12 @@ function App() {
                       {(filterTargetUrl || filterKeyword) && <th>Relevance</th>}
                       <th>Words</th>
                       <th>Links</th>
-                      <th>Density</th>
+                      <th>
+                        <span className="label-with-tooltip">
+                          Density
+                          <TooltipIcon content={<>&lt; 0.35% = Low (add links)<br/>0.35% – 0.7% = Good<br/>&gt; 0.7% = High (consider removing)</>} position="bottom" />
+                        </span>
+                      </th>
                       <th>Links Available</th>
                       <th>Status</th>
                       <th></th>
@@ -970,7 +975,7 @@ function App() {
                         <td>{result.word_count.toLocaleString()}</td>
                         <td>{result.internal_link_count}</td>
                         <td>
-                          <span className={`density-value density-${result.status !== 'failed' ? result.status : ''}`} title={`< 0.35% = Low | 0.35%–0.7% = Good | > 0.7% = High`}>
+                          <span className={`density-value density-${result.status !== 'failed' ? result.status : ''}`}>
                             {result.status !== 'failed' ? `${result.link_density.toFixed(2)}%` : '\u2014'}
                           </span>
                         </td>
