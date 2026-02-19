@@ -11,6 +11,9 @@ def _build_database_url() -> str:
         url = url.replace("postgres://", "postgresql+asyncpg://", 1)
     elif url.startswith("postgresql://") and "+asyncpg" not in url:
         url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    # Strip query params not supported by asyncpg (e.g. sslmode, channel_binding)
+    if "?" in url:
+        url = url.split("?")[0]
     return url
 
 
