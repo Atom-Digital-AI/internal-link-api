@@ -26,7 +26,7 @@ export function ContextualEditor({
   onBack
 }: ContextualEditorProps) {
   const { user, accessToken } = useAuth();
-  const isFree = !user || user.plan === 'free';
+  const isPro = user?.plan === 'pro';
   const [showAiProModal, setShowAiProModal] = useState(false);
 
   // Raw suggestions from AI
@@ -69,14 +69,14 @@ export function ContextualEditor({
   // Auto-fetch suggestions on mount if page needs links (Pro only)
   useEffect(() => {
     const needsLinks = pageData.link_density < 0.35;
-    if (!isFree && needsLinks && suggestions.length === 0 && !isLoadingSuggestions) {
+    if (isPro && needsLinks && suggestions.length === 0 && !isLoadingSuggestions) {
       handleGetSuggestions();
     }
   }, []); // Only on mount
 
   // Fetch AI suggestions
   const handleGetSuggestions = useCallback(async () => {
-    if (isFree) {
+    if (!isPro) {
       setShowAiProModal(true);
       return;
     }
@@ -99,7 +99,7 @@ export function ContextualEditor({
     } finally {
       setIsLoadingSuggestions(false);
     }
-  }, [isFree, pageData, targetPages, filterTargetUrl, filterKeyword, filterMatchType]);
+  }, [isPro, pageData, targetPages, filterTargetUrl, filterKeyword, filterMatchType]);
 
   // Clear filters
   const handleClearFilters = useCallback(() => {
