@@ -117,7 +117,7 @@ Respond in this exact JSON format:
 
     try:
         client = genai.Client(api_key=GEMINI_API_KEY)
-        gemini_response = client.models.generate_content(
+        gemini_response = await client.aio.models.generate_content(
             model=GEMINI_MODEL,
             contents=prompt,
             config=types.GenerateContentConfig(
