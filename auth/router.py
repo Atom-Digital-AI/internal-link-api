@@ -231,6 +231,59 @@ async def google_auth(
 
 
 # ---------------------------------------------------------------------------
+# POST /auth/google/link — link Google account to authenticated user
+# ---------------------------------------------------------------------------
+
+
+@router.post("/google/link", status_code=status.HTTP_200_OK)
+async def link_google(
+    request_body: GoogleAuthRequest,
+    current_user: User = Depends(get_current_user_dep),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Link a Google account to the current authenticated user."""
+    if not GOOGLE_CLIENT_ID:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Google Sign-In is not configured.",
+        )
+
+    if current_user.google_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A Google account is already linked.",
+        )
+
+    try:
+        idinfo = google_id_token.verify_oauth2_token(
+            request_body.credential,
+            google_requests.Request(),
+            GOOGLE_CLIENT_ID,
+        )
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid Google token.",
+        )
+
+    google_id = idinfo["sub"]
+
+    # Check if this Google account is already linked to another user
+    result = await db.execute(select(User).where(User.google_id == google_id))
+    existing = result.scalar_one_or_none()
+    if existing is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This Google account is already linked to another user.",
+        )
+
+    current_user.google_id = google_id
+    await db.flush()
+
+    return {"message": "Google account linked successfully."}
+
+
+# ---------------------------------------------------------------------------
 # POST /auth/logout
 # ---------------------------------------------------------------------------
 
