@@ -24,7 +24,7 @@ STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
 
 
-def _stripe() -> stripe.Stripe:
+def _stripe():
     """Get configured Stripe client."""
     stripe.api_key = STRIPE_SECRET_KEY
     return stripe
