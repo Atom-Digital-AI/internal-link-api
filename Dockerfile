@@ -14,14 +14,10 @@ COPY frontend/ ./
 
 # Build args for Vite environment variables
 ARG VITE_API_URL=""
-ARG VITE_GEMINI_API_KEY
-ARG VITE_GEMINI_MODEL=gemini-1.5-flash
 ARG VITE_GOOGLE_CLIENT_ID
 
 # Set environment variables for build
 ENV VITE_API_URL=$VITE_API_URL
-ENV VITE_GEMINI_API_KEY=$VITE_GEMINI_API_KEY
-ENV VITE_GEMINI_MODEL=$VITE_GEMINI_MODEL
 ENV VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID
 
 # Build the frontend
@@ -59,7 +55,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN crawl4ai-setup
 
 # Copy application code
-COPY main.py models.py scraper.py sitemap_parser.py fallback_crawler.py database.py db_models.py email_service.py ./
+COPY main.py models.py scraper.py sitemap_parser.py fallback_crawler.py database.py db_models.py email_service.py rate_limit.py ./
 COPY auth/ ./auth/
 COPY billing/ ./billing/
 COPY blog/ ./blog/

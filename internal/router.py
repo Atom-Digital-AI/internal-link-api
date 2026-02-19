@@ -15,6 +15,10 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/internal", tags=["internal"])
 
 INTERNAL_SECRET = os.environ.get("INTERNAL_SECRET", "")
+if not INTERNAL_SECRET:
+    logging.getLogger(__name__).warning(
+        "INTERNAL_SECRET not set — /internal/* endpoints will reject all requests"
+    )
 
 
 def _verify_secret(x_internal_secret: str = Header(default="")) -> None:

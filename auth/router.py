@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token as google_id_token
 
+from rate_limit import limiter
 from auth.dependencies import get_current_user as get_current_user_dep
 from auth.utils import (
     create_access_token,
@@ -97,8 +98,10 @@ def _clear_refresh_cookie(response: Response) -> None:
 # ---------------------------------------------------------------------------
 
 
+@limiter.limit("5/minute")
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 async def register(
+    request: Request,
     request_body: RegisterRequest,
     response: Response,
     db: AsyncSession = Depends(get_db),
@@ -137,10 +140,11 @@ async def register(
 
 
 # ---------------------------------------------------------------------------
-# POST /auth/login (rate limited: 10/15min per IP - applied in main.py)
+# POST /auth/login
 # ---------------------------------------------------------------------------
 
 
+@limiter.limit("5/minute")
 @router.post("/login", response_model=TokenResponse)
 async def login(
     request_body: LoginRequest,
@@ -171,8 +175,10 @@ async def login(
 # ---------------------------------------------------------------------------
 
 
+@limiter.limit("10/minute")
 @router.post("/google", response_model=TokenResponse)
 async def google_auth(
+    request: Request,
     request_body: GoogleAuthRequest,
     response: Response,
     db: AsyncSession = Depends(get_db),
@@ -352,8 +358,10 @@ class ForgotPasswordRequest(BaseModel):
     email: EmailStr
 
 
+@limiter.limit("3/minute")
 @router.post("/forgot-password", status_code=status.HTTP_200_OK)
 async def forgot_password(
+    request: Request,
     request_body: ForgotPasswordRequest,
     db: AsyncSession = Depends(get_db),
 ) -> dict:

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link, Navigate } from 'react-router-dom'
+import DOMPurify from 'dompurify'
 import MarketingNav from '../components/MarketingNav'
 import MarketingFooter from '../components/MarketingFooter'
 import { fetchBlogPost, type BlogPostDetail } from '../services/api'
@@ -79,7 +80,12 @@ export default function BlogPost() {
 
             <div
               className="blog-content"
-              dangerouslySetInnerHTML={{ __html: post.html_content }}
+              dangerouslySetInnerHTML={{
+                __html: DOMPurify.sanitize(post.html_content, {
+                  ADD_TAGS: ['iframe'],
+                  ADD_ATTR: ['target', 'rel', 'frameborder', 'allowfullscreen', 'allow', 'loading'],
+                })
+              }}
             />
           </>
         )}
