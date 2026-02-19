@@ -42,7 +42,15 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
-COPY main.py models.py scraper.py sitemap_parser.py ./
+COPY main.py models.py scraper.py sitemap_parser.py database.py db_models.py email_service.py ./
+COPY auth/ ./auth/
+COPY billing/ ./billing/
+COPY blog/ ./blog/
+COPY internal/ ./internal/
+COPY links/ ./links/
+COPY sessions/ ./sessions/
+COPY ai_router/ ./ai_router/
+COPY migrations/ ./migrations/
 
 # Copy built frontend from first stage
 COPY --from=frontend-build /frontend/dist ./static
