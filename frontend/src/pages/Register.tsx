@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import { GoogleLogin } from '@react-oauth/google'
 import { useAuth } from '../contexts/AuthContext'
 import linkiLogo from '../../media/images/logos/Linki Logo - No Spacing - Transparent.png';
 
@@ -13,7 +14,7 @@ function getPasswordStrength(password: string) {
 }
 
 export default function Register() {
-  const { register } = useAuth()
+  const { register, googleLogin } = useAuth()
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -37,6 +38,20 @@ export default function Register() {
       navigate('/app')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleGoogleSuccess = async (credentialResponse: { credential?: string }) => {
+    if (!credentialResponse.credential) return
+    setError(null)
+    setLoading(true)
+    try {
+      await googleLogin(credentialResponse.credential)
+      navigate('/app')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Google sign-in failed.')
     } finally {
       setLoading(false)
     }
@@ -196,6 +211,24 @@ export default function Register() {
               {loading ? 'Creating account…' : 'Create account'}
             </button>
           </form>
+
+          {/* Divider */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '20px 0' }}>
+            <div style={{ flex: 1, height: '1px', background: 'rgba(0,0,0,0.08)' }} />
+            <span style={{ color: '#6E6E73', fontSize: '0.8125rem' }}>or</span>
+            <div style={{ flex: 1, height: '1px', background: 'rgba(0,0,0,0.08)' }} />
+          </div>
+
+          {/* Google Sign-Up */}
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={() => setError('Google sign-up failed.')}
+              size="large"
+              width="360"
+              text="signup_with"
+            />
+          </div>
 
           <p style={{ marginTop: '24px', textAlign: 'center', fontSize: '0.875rem', color: '#6E6E73' }}>
             Already have an account?{' '}
