@@ -36,7 +36,7 @@ from models import (
     SitemapResponse,
     TargetPageInfo,
 )
-from scraper import analyze_page, analyze_page_summary, fetch_target_page_content
+from scraper import analyze_page, analyze_page_summary, calculate_keyword_relevance, fetch_target_page_content
 from sitemap_parser import fetch_sitemap
 
 # New SaaS routers
@@ -185,10 +185,22 @@ async def fetch_target(request: Request, body: FetchTargetRequest):
 async def match_links(request: Request, body: MatchLinksRequest):
     """
     Find internal link opportunities using semantic embedding matching.
-    Matches source content windows against candidate target pages.
-    Returns ranked matches above the similarity threshold.
+    Optionally pre-filters targets by keyword relevance before running embeddings.
     """
     targets_as_dicts = [{"url": t.url, "title": t.title} for t in body.targets]
+
+    # Pre-filter: if more targets than max_targets, use keyword relevance to narrow down
+    if len(targets_as_dicts) > body.max_targets:
+        scored = []
+        for t in targets_as_dicts:
+            keywords = t["title"].lower().split()
+            if body.filter_keyword:
+                keywords.append(body.filter_keyword.lower())
+            score = calculate_keyword_relevance(body.source_content, keywords)
+            scored.append((score, t))
+        scored.sort(key=lambda x: x[0], reverse=True)
+        targets_as_dicts = [t for _, t in scored[: body.max_targets]]
+
     matches = find_link_opportunities(
         source_content=body.source_content,
         targets=targets_as_dicts,

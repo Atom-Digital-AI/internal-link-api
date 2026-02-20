@@ -128,6 +128,8 @@ class MatchLinksRequest(BaseModel):
     source_content: str
     targets: list[MatchTarget]
     threshold: float = 0.7
+    filter_keyword: Optional[str] = None
+    max_targets: int = 20
 
 
 class LinkMatch(BaseModel):
