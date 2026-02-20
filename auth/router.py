@@ -17,6 +17,7 @@ from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token as google_id_token
 
 from auth.disposable_email import is_disposable_email
+from auth.turnstile import verify_turnstile
 
 from rate_limit import limiter
 from auth.dependencies import get_current_user as get_current_user_dep
@@ -49,12 +50,14 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     password: str
     confirm_password: str
+    turnstile_token: str
 
 
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
     remember_me: bool = False
+    turnstile_token: str
 
 
 class GoogleAuthRequest(BaseModel):
@@ -110,6 +113,14 @@ async def register(
     response: Response,
     db: AsyncSession = Depends(get_db),
 ) -> TokenResponse:
+    # Verify Turnstile token
+    client_ip = request.client.host if request.client else None
+    if not await verify_turnstile(request_body.turnstile_token, client_ip):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Bot verification failed. Please try again.",
+        )
+
     if request_body.password != request_body.confirm_password:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Passwords do not match."
@@ -163,6 +174,14 @@ async def login(
     db: AsyncSession = Depends(get_db),
 ) -> TokenResponse:
     _INVALID_MSG = "Invalid email or password."
+
+    # Verify Turnstile token
+    client_ip = request.client.host if request.client else None
+    if not await verify_turnstile(request_body.turnstile_token, client_ip):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Bot verification failed. Please try again.",
+        )
 
     result = await db.execute(select(User).where(User.email == request_body.email))
     user = result.scalar_one_or_none()

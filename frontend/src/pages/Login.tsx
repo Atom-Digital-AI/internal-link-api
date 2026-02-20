@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { GoogleLogin } from '@react-oauth/google'
+import { Turnstile, type TurnstileInstance } from '@marsidev/react-turnstile'
 import { useAuth } from '../contexts/AuthContext'
 import linkiLogo from '../../media/images/logos/Linki Logo - No Spacing - Transparent.png';
 
@@ -12,16 +13,24 @@ export default function Login() {
   const [rememberMe, setRememberMe] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
+  const turnstileRef = useRef<TurnstileInstance | null>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!turnstileToken) {
+      setError('Please complete the verification.')
+      return
+    }
     setError(null)
     setLoading(true)
     try {
-      await login(email, password, rememberMe)
+      await login(email, password, rememberMe, turnstileToken)
       navigate('/app')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed.')
+      turnstileRef.current?.reset()
+      setTurnstileToken(null)
     } finally {
       setLoading(false)
     }
@@ -197,19 +206,28 @@ export default function Login() {
               </Link>
             </div>
 
+            <Turnstile
+              ref={turnstileRef}
+              siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY || ''}
+              onSuccess={setTurnstileToken}
+              onError={() => setTurnstileToken(null)}
+              onExpire={() => setTurnstileToken(null)}
+              options={{ theme: 'light', size: 'flexible' }}
+            />
+
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !turnstileToken}
               style={{
                 width: '100%',
                 padding: '13px',
-                background: loading ? '#AEAEB2' : '#0071E3',
+                background: loading || !turnstileToken ? '#AEAEB2' : '#0071E3',
                 color: '#fff',
                 border: 'none',
                 borderRadius: '980px',
                 fontSize: '1rem',
                 fontWeight: 600,
-                cursor: loading ? 'not-allowed' : 'pointer',
+                cursor: loading || !turnstileToken ? 'not-allowed' : 'pointer',
                 marginTop: '8px',
                 transition: 'background 150ms',
               }}
