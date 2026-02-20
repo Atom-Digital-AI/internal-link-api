@@ -58,6 +58,26 @@ def send_welcome_email(to_email: str) -> None:
     _send_email(to_email, subject, html_content)
 
 
+def send_verification_email(to_email: str, token: str) -> None:
+    """Send an email verification link to a newly registered user."""
+    verify_url = f"{FRONTEND_URL}/verify-email?token={token}"
+    subject = "Verify your email address"
+    html_content = f"""
+    <html>
+      <body>
+        <h1>Verify your email address</h1>
+        <p>Thanks for signing up for Internal Link Finder! Please verify your email
+        address by clicking the link below. This link expires in 24 hours.</p>
+        <p><a href="{verify_url}" style="background:#2563eb;color:white;padding:12px 24px;
+        border-radius:6px;text-decoration:none;">Verify Email</a></p>
+        <p>If you did not create an account, you can safely ignore this email.</p>
+        <p>The Internal Link Finder Team</p>
+      </body>
+    </html>
+    """
+    _send_email(to_email, subject, html_content)
+
+
 def send_password_reset_email(to_email: str, reset_token: str) -> None:
     """Send a password reset email with a secure reset link."""
     reset_url = f"{FRONTEND_URL}/reset-password?token={reset_token}"

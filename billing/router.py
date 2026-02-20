@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from auth.dependencies import get_current_user
+from auth.dependencies import get_current_user_allow_unverified as get_current_user
 from database import get_db
 from db_models import AiUsage, Subscription, User
 

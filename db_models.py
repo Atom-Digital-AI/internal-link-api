@@ -31,6 +31,13 @@ class User(Base):
     downgraded_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    email_verified: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false"
+    )
+    verification_token: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    verification_token_expires: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     # Relationships
     subscriptions: Mapped[list["Subscription"]] = relationship(
