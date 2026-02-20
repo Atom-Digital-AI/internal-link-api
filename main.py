@@ -274,7 +274,7 @@ async def sitemap(db: AsyncSession = Depends(get_db)) -> Response:
 
     # VS / comparison pages
     for slug in _VS_SLUGS:
-        entries.append(_url_entry(base_url, f"/linki-vs-{slug}",
+        entries.append(_url_entry(base_url, f"/linki-vs/{slug}",
                                   lastmod=today,
                                   changefreq="monthly",
                                   priority="0.7"))
