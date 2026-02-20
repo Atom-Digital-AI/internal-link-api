@@ -1,18 +1,30 @@
+import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
 import MarketingNav from '../components/MarketingNav'
 import MarketingFooter from '../components/MarketingFooter'
-import { getCompetitor } from '../data/competitors'
+import { getCmsVsPage, type CmsVsPage } from '../services/cms'
 
 function renderValue(val: string | boolean): string {
-  if (val === true) return '✓'
-  if (val === false) return '✗'
-  return val
+  if (val === true || val === 'true') return '\u2713'
+  if (val === false || val === 'false') return '\u2717'
+  return val as string
 }
 
 export default function VsPage() {
   const { slug } = useParams<{ slug: string }>()
-  const competitor = slug ? getCompetitor(slug) : undefined
+  const [competitor, setCompetitor] = useState<CmsVsPage | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!slug) { setLoading(false); return }
+    getCmsVsPage(slug)
+      .then(setCompetitor)
+      .catch(console.error)
+      .finally(() => setLoading(false))
+  }, [slug])
+
+  if (loading) return null
 
   if (!competitor) {
     return (
@@ -55,17 +67,17 @@ export default function VsPage() {
   return (
     <div style={{ fontFamily: 'var(--font-sans)', background: '#F5F5F7' }}>
       <Helmet>
-        <title>{`Linki vs ${competitor.name} — Comparison`}</title>
-        <meta name="description" content={competitor.heroSubhead} />
+        <title>{competitor.metaTitle || `Linki vs ${competitor.name} — Comparison`}</title>
+        <meta name="description" content={competitor.metaDescription || competitor.heroSubhead || ''} />
         <link rel="canonical" href={`https://getlinki.app/linki-vs/${slug}`} />
-        <meta property="og:title" content={`Linki vs ${competitor.name} — Comparison`} />
-        <meta property="og:description" content={competitor.heroSubhead} />
+        <meta property="og:title" content={competitor.metaTitle || `Linki vs ${competitor.name} — Comparison`} />
+        <meta property="og:description" content={competitor.metaDescription || competitor.heroSubhead || ''} />
         <meta property="og:url" content={`https://getlinki.app/linki-vs/${slug}`} />
         <meta property="og:type" content="website" />
         <meta property="og:site_name" content="Linki" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content={`Linki vs ${competitor.name} — Comparison`} />
-        <meta name="twitter:description" content={competitor.heroSubhead} />
+        <meta name="twitter:title" content={competitor.metaTitle || `Linki vs ${competitor.name} — Comparison`} />
+        <meta name="twitter:description" content={competitor.metaDescription || competitor.heroSubhead || ''} />
       </Helmet>
       <MarketingNav />
 
@@ -179,227 +191,235 @@ export default function VsPage() {
       </section>
 
       {/* Comparison Table */}
-      <section style={{ padding: '64px 24px', background: '#F5F5F7' }}>
-        <div style={{ maxWidth: '760px', margin: '0 auto' }}>
-          <h2
-            style={{
-              textAlign: 'center',
-              fontSize: '1.75rem',
-              fontWeight: 700,
-              letterSpacing: '-0.03em',
-              color: '#1D1D1F',
-              margin: '0 0 32px',
-            }}
-          >
-            Feature comparison
-          </h2>
-          <div
-            style={{
-              background: '#FFFFFF',
-              borderRadius: '16px',
-              border: '1px solid rgba(0,0,0,0.06)',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-              overflow: 'hidden',
-            }}
-          >
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'var(--font-sans)' }}>
-              <thead>
-                <tr style={{ background: '#F5F5F7' }}>
-                  <th style={{ ...cellBase, textAlign: 'left', fontWeight: 600, color: '#6E6E73', width: '40%' }}>
-                    Feature
-                  </th>
-                  <th style={{ ...cellBase, fontWeight: 700, color: '#0071E3' }}>Linki</th>
-                  <th style={{ ...cellBase, fontWeight: 700, color: '#6E6E73' }}>{competitor.name}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {competitor.tableRows.map((row, i) => {
-                  const linkiVal = renderValue(row.linki)
-                  const competitorVal = renderValue(row.competitor)
-                  return (
-                    <tr key={row.feature} style={{ background: i % 2 === 0 ? '#FFFFFF' : '#FAFAFA' }}>
-                      <td style={{ ...cellBase, textAlign: 'left', color: '#1D1D1F', fontWeight: 500 }}>
-                        {row.feature}
-                      </td>
-                      <td
-                        style={{
-                          ...cellBase,
-                          color: row.linki === true ? '#0071E3' : row.linki === false ? '#AEAEB2' : '#1D1D1F',
-                          fontWeight: row.linki === true ? 700 : 400,
-                        }}
-                      >
-                        {linkiVal}
-                      </td>
-                      <td
-                        style={{
-                          ...cellBase,
-                          color: row.competitor === false ? '#AEAEB2' : '#1D1D1F',
-                        }}
-                      >
-                        {competitorVal}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-
-      {/* Why Choose Linki */}
-      <section style={{ padding: '64px 24px', background: '#FFFFFF' }}>
-        <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-          <h2
-            style={{
-              textAlign: 'center',
-              fontSize: '1.75rem',
-              fontWeight: 700,
-              letterSpacing: '-0.03em',
-              color: '#1D1D1F',
-              margin: '0 0 40px',
-            }}
-          >
-            Why SEOs choose Linki over {competitor.name}
-          </h2>
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-              gap: '20px',
-            }}
-          >
-            {competitor.whyLinki.map((card) => (
-              <div
-                key={card.title}
-                style={{
-                  background: '#FFFFFF',
-                  borderRadius: '16px',
-                  padding: '28px 24px',
-                  border: '1px solid rgba(0,0,0,0.06)',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-                }}
-              >
-                <div
-                  style={{
-                    width: '44px',
-                    height: '44px',
-                    borderRadius: '12px',
-                    background: 'rgba(0,113,227,0.1)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '1.375rem',
-                    marginBottom: '14px',
-                  }}
-                >
-                  {card.icon}
-                </div>
-                <h3
-                  style={{
-                    fontSize: '1rem',
-                    fontWeight: 700,
-                    color: '#1D1D1F',
-                    margin: '0 0 8px',
-                  }}
-                >
-                  {card.title}
-                </h3>
-                <p
-                  style={{
-                    fontSize: '0.875rem',
-                    color: '#6E6E73',
-                    lineHeight: 1.6,
-                    margin: 0,
-                  }}
-                >
-                  {card.body}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Where Competitor Has the Edge */}
-      <section style={{ padding: '64px 24px', background: '#F5F5F7' }}>
-        <div style={{ maxWidth: '760px', margin: '0 auto' }}>
-          <h2
-            style={{
-              fontSize: '1.5rem',
-              fontWeight: 700,
-              letterSpacing: '-0.02em',
-              color: '#1D1D1F',
-              margin: '0 0 24px',
-            }}
-          >
-            Where {competitor.name} is stronger
-          </h2>
-          <p style={{ color: '#6E6E73', fontSize: '0.9375rem', marginBottom: '20px', lineHeight: 1.6 }}>
-            We believe in being honest. Here's where {competitor.name} has an advantage:
-          </p>
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {competitor.competitorEdge.map((point) => (
-              <li
-                key={point}
-                style={{
-                  display: 'flex',
-                  gap: '12px',
-                  alignItems: 'flex-start',
-                  color: '#6E6E73',
-                  fontSize: '0.9375rem',
-                  lineHeight: 1.6,
-                }}
-              >
-                <span style={{ color: '#AEAEB2', flexShrink: 0, marginTop: '2px' }}>○</span>
-                {point}
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
-
-      {/* Bottom Line */}
-      <section style={{ padding: '64px 24px', background: '#FFFFFF' }}>
-        <div style={{ maxWidth: '760px', margin: '0 auto' }}>
-          <div
-            style={{
-              background: '#FFFFFF',
-              borderRadius: '20px',
-              padding: '48px',
-              border: '1px solid rgba(0,0,0,0.06)',
-              boxShadow: '0 4px 16px rgba(0,0,0,0.06)',
-              textAlign: 'center',
-            }}
-          >
+      {competitor.tableRows && competitor.tableRows.length > 0 && (
+        <section style={{ padding: '64px 24px', background: '#F5F5F7' }}>
+          <div style={{ maxWidth: '760px', margin: '0 auto' }}>
             <h2
               style={{
+                textAlign: 'center',
                 fontSize: '1.75rem',
                 fontWeight: 700,
                 letterSpacing: '-0.03em',
                 color: '#1D1D1F',
+                margin: '0 0 32px',
+              }}
+            >
+              Feature comparison
+            </h2>
+            <div
+              style={{
+                background: '#FFFFFF',
+                borderRadius: '16px',
+                border: '1px solid rgba(0,0,0,0.06)',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                overflow: 'hidden',
+              }}
+            >
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'var(--font-sans)' }}>
+                <thead>
+                  <tr style={{ background: '#F5F5F7' }}>
+                    <th style={{ ...cellBase, textAlign: 'left', fontWeight: 600, color: '#6E6E73', width: '40%' }}>
+                      Feature
+                    </th>
+                    <th style={{ ...cellBase, fontWeight: 700, color: '#0071E3' }}>Linki</th>
+                    <th style={{ ...cellBase, fontWeight: 700, color: '#6E6E73' }}>{competitor.name}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {competitor.tableRows.map((row, i) => {
+                    const linkiVal = renderValue(row.linki)
+                    const competitorVal = renderValue(row.competitor)
+                    return (
+                      <tr key={row.feature} style={{ background: i % 2 === 0 ? '#FFFFFF' : '#FAFAFA' }}>
+                        <td style={{ ...cellBase, textAlign: 'left', color: '#1D1D1F', fontWeight: 500 }}>
+                          {row.feature}
+                        </td>
+                        <td
+                          style={{
+                            ...cellBase,
+                            color: row.linki === 'true' ? '#0071E3' : row.linki === 'false' ? '#AEAEB2' : '#1D1D1F',
+                            fontWeight: row.linki === 'true' ? 700 : 400,
+                          }}
+                        >
+                          {linkiVal}
+                        </td>
+                        <td
+                          style={{
+                            ...cellBase,
+                            color: row.competitor === 'false' ? '#AEAEB2' : '#1D1D1F',
+                          }}
+                        >
+                          {competitorVal}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Why Choose Linki */}
+      {competitor.whyLinki && competitor.whyLinki.length > 0 && (
+        <section style={{ padding: '64px 24px', background: '#FFFFFF' }}>
+          <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+            <h2
+              style={{
+                textAlign: 'center',
+                fontSize: '1.75rem',
+                fontWeight: 700,
+                letterSpacing: '-0.03em',
+                color: '#1D1D1F',
+                margin: '0 0 40px',
+              }}
+            >
+              Why SEOs choose Linki over {competitor.name}
+            </h2>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                gap: '20px',
+              }}
+            >
+              {competitor.whyLinki.map((card) => (
+                <div
+                  key={card.title}
+                  style={{
+                    background: '#FFFFFF',
+                    borderRadius: '16px',
+                    padding: '28px 24px',
+                    border: '1px solid rgba(0,0,0,0.06)',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+                  }}
+                >
+                  <div
+                    style={{
+                      width: '44px',
+                      height: '44px',
+                      borderRadius: '12px',
+                      background: 'rgba(0,113,227,0.1)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '1.375rem',
+                      marginBottom: '14px',
+                    }}
+                  >
+                    {card.icon}
+                  </div>
+                  <h3
+                    style={{
+                      fontSize: '1rem',
+                      fontWeight: 700,
+                      color: '#1D1D1F',
+                      margin: '0 0 8px',
+                    }}
+                  >
+                    {card.title}
+                  </h3>
+                  <p
+                    style={{
+                      fontSize: '0.875rem',
+                      color: '#6E6E73',
+                      lineHeight: 1.6,
+                      margin: 0,
+                    }}
+                  >
+                    {card.body}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Where Competitor Has the Edge */}
+      {competitor.competitorEdge && competitor.competitorEdge.length > 0 && (
+        <section style={{ padding: '64px 24px', background: '#F5F5F7' }}>
+          <div style={{ maxWidth: '760px', margin: '0 auto' }}>
+            <h2
+              style={{
+                fontSize: '1.5rem',
+                fontWeight: 700,
+                letterSpacing: '-0.02em',
+                color: '#1D1D1F',
                 margin: '0 0 24px',
               }}
             >
-              The bottom line
+              Where {competitor.name} is stronger
             </h2>
-            {competitor.bottomLine.split('\n\n').map((para, i) => (
-              <p
-                key={i}
+            <p style={{ color: '#6E6E73', fontSize: '0.9375rem', marginBottom: '20px', lineHeight: 1.6 }}>
+              We believe in being honest. Here's where {competitor.name} has an advantage:
+            </p>
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {competitor.competitorEdge.map((edge) => (
+                <li
+                  key={edge.point}
+                  style={{
+                    display: 'flex',
+                    gap: '12px',
+                    alignItems: 'flex-start',
+                    color: '#6E6E73',
+                    fontSize: '0.9375rem',
+                    lineHeight: 1.6,
+                  }}
+                >
+                  <span style={{ color: '#AEAEB2', flexShrink: 0, marginTop: '2px' }}>&#9675;</span>
+                  {edge.point}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      )}
+
+      {/* Bottom Line */}
+      {competitor.bottomLine && (
+        <section style={{ padding: '64px 24px', background: '#FFFFFF' }}>
+          <div style={{ maxWidth: '760px', margin: '0 auto' }}>
+            <div
+              style={{
+                background: '#FFFFFF',
+                borderRadius: '20px',
+                padding: '48px',
+                border: '1px solid rgba(0,0,0,0.06)',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.06)',
+                textAlign: 'center',
+              }}
+            >
+              <h2
                 style={{
-                  color: i === competitor.bottomLine.split('\n\n').length - 1 ? '#1D1D1F' : '#6E6E73',
-                  fontSize: '0.9375rem',
-                  lineHeight: 1.75,
-                  margin: '0 0 16px',
-                  textAlign: 'left',
+                  fontSize: '1.75rem',
+                  fontWeight: 700,
+                  letterSpacing: '-0.03em',
+                  color: '#1D1D1F',
+                  margin: '0 0 24px',
                 }}
               >
-                {para}
-              </p>
-            ))}
+                The bottom line
+              </h2>
+              {competitor.bottomLine.split('\n\n').map((para, i) => (
+                <p
+                  key={i}
+                  style={{
+                    color: i === competitor.bottomLine!.split('\n\n').length - 1 ? '#1D1D1F' : '#6E6E73',
+                    fontSize: '0.9375rem',
+                    lineHeight: 1.75,
+                    margin: '0 0 16px',
+                    textAlign: 'left',
+                  }}
+                >
+                  {para}
+                </p>
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* CTA Section */}
       <section
