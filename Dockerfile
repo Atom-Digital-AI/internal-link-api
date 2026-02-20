@@ -56,7 +56,7 @@ RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTr
 RUN crawl4ai-setup
 
 # Copy application code
-COPY main.py models.py scraper.py sitemap_parser.py fallback_crawler.py database.py db_models.py email_service.py rate_limit.py ./
+COPY main.py models.py scraper.py sitemap_parser.py fallback_crawler.py database.py db_models.py email_service.py rate_limit.py embeddings.py ./
 COPY auth/ ./auth/
 COPY billing/ ./billing/
 COPY blog/ ./blog/
