@@ -13,6 +13,7 @@ services:
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - GEMINI_MODEL=${GEMINI_MODEL:-gemini-1.5-flash}
       - JWT_SECRET=${JWT_SECRET:-dev-only-change-in-production}
+      - TURNSTILE_SECRET_KEY=${TURNSTILE_SECRET_KEY:-}
 
   frontend:
     build:
@@ -25,3 +26,4 @@ services:
       - /app/node_modules  # Preserve node_modules from container
     environment:
       - VITE_API_URL=http://localhost:8000
+      - VITE_TURNSTILE_SITE_KEY=${VITE_TURNSTILE_SITE_KEY:-}
