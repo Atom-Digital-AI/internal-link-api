@@ -1,62 +1,41 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
+import { getGlobal } from '../services/cms'
 import MarketingNav from '../components/MarketingNav'
 import MarketingFooter from '../components/MarketingFooter'
 
-const features = [
-  {
-    category: 'SCANNING',
-    h2: 'Bulk URL scanning',
-    desc: 'Crawl your sitemap and analyse up to 10 pages on the free plan or 500 pages on Pro. Linki discovers every existing internal link and maps your site\'s link structure automatically.',
-    emoji: '🕷️',
-  },
-  {
-    category: 'AI-POWERED',
-    h2: 'AI-powered suggestions',
-    desc: 'Linki reads the context of each page and recommends the perfect anchor text to add, plus exactly which target page to link to.',
-    emoji: '✨',
-  },
-  {
-    category: 'PRO FEATURE',
-    h2: 'Cloud sessions',
-    desc: 'Save your analysis sessions to the cloud. Come back tomorrow, next week, or next month — your crawl results and suggestions are waiting for you.',
-    emoji: '☁️',
-  },
-  {
-    category: 'PRO FEATURE',
-    h2: 'Saved link opportunities',
-    desc: 'Bookmark individual link suggestions across sessions. Build a queue of improvements to work through at your own pace without losing anything.',
-    emoji: '🔖',
-  },
-  {
-    category: 'INSIGHTS',
-    h2: 'Link health tracking',
-    desc: 'See at a glance which pages have too few internal links pointing to them. Spot your most under-linked content and prioritise accordingly.',
-    emoji: '📊',
-  },
-  {
-    category: 'EXPORT',
-    h2: 'Export & integrate',
-    desc: 'Download all your link opportunities as a CSV file. Drop them into your CMS workflow, share with your team, or import into your project management tool.',
-    emoji: '⬇️',
-  },
-]
+interface FeaturesData {
+  heroHeading: string
+  heroSubtext: string
+  features: { category: string; h2: string; desc: string; emoji: string }[]
+  metaTitle: string
+  metaDescription: string
+}
 
 export default function Features() {
+  const [content, setContent] = useState<FeaturesData | null>(null)
+
+  useEffect(() => {
+    getGlobal<FeaturesData>('page-features').then(setContent).catch(() => {})
+  }, [])
+
+  if (!content) return null
+
   return (
     <div style={{ fontFamily: 'var(--font-sans)' }}>
       <Helmet>
-        <title>Features - Linki Internal Linking Tool</title>
-        <meta name="description" content="Discover Linki's features: bulk URL scanning, AI-powered link suggestions, cloud sessions, saved opportunities, link health tracking, and CSV export." />
+        <title>{content.metaTitle}</title>
+        <meta name="description" content={content.metaDescription} />
         <link rel="canonical" href="https://getlinki.app/features" />
-        <meta property="og:title" content="Features - Linki Internal Linking Tool" />
-        <meta property="og:description" content="Discover Linki's features: bulk URL scanning, AI-powered link suggestions, cloud sessions, saved opportunities, link health tracking, and CSV export." />
+        <meta property="og:title" content={content.metaTitle} />
+        <meta property="og:description" content={content.metaDescription} />
         <meta property="og:url" content="https://getlinki.app/features" />
         <meta property="og:type" content="website" />
         <meta property="og:site_name" content="Linki" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Features - Linki Internal Linking Tool" />
-        <meta name="twitter:description" content="Discover Linki's features: bulk URL scanning, AI-powered link suggestions, cloud sessions, saved opportunities, link health tracking, and CSV export." />
+        <meta name="twitter:title" content={content.metaTitle} />
+        <meta name="twitter:description" content={content.metaDescription} />
       </Helmet>
       <MarketingNav />
 
@@ -77,7 +56,7 @@ export default function Features() {
             margin: '0 0 16px',
           }}
         >
-          Everything you need for smarter internal linking
+          {content.heroHeading}
         </h1>
         <p
           style={{
@@ -88,13 +67,13 @@ export default function Features() {
             lineHeight: 1.6,
           }}
         >
-          Linki combines intelligent crawling with AI to take the guesswork out of internal linking.
+          {content.heroSubtext}
         </p>
       </section>
 
       {/* Features list */}
       <section style={{ background: '#FFFFFF', padding: '80px 40px' }}>
-        {features.map((feature, index) => {
+        {content.features.map((feature, index) => {
           const isEven = index % 2 === 1
 
           return (
