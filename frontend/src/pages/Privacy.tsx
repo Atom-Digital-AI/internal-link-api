@@ -46,7 +46,8 @@ export default function Privacy() {
 
         <hr style={{ borderTop: '1px solid rgba(0,0,0,0.08)', margin: '32px 0' }} />
 
-        {content?.body && <RichText data={content.body} />}
+        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+        {!!content?.body && <RichText data={content.body as any} />}
       </div>
       <MarketingFooter />
     </div>

@@ -111,7 +111,8 @@ export default function BlogPost() {
             )}
 
             <div className="blog-content">
-              <RichText data={post.body} />
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+              <RichText data={post.body as any} />
             </div>
           </>
         )}
