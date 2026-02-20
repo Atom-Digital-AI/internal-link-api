@@ -19,6 +19,7 @@ from auth.dependencies import get_current_user
 from database import get_db
 from db_models import BlogPost, User
 
+from embeddings import find_link_opportunities
 from models import (
     AnalyzeRequest,
     AnalyzeResponse,
@@ -28,6 +29,9 @@ from models import (
     ConfigResponse,
     FetchTargetRequest,
     HealthResponse,
+    LinkMatch,
+    MatchLinksRequest,
+    MatchLinksResponse,
     SitemapRequest,
     SitemapResponse,
     TargetPageInfo,
@@ -174,6 +178,25 @@ async def fetch_target(request: Request, body: FetchTargetRequest):
     Use this to get keywords for relevance scoring in focused search mode.
     """
     return await fetch_target_page_content(str(body.url))
+
+
+@limiter.limit("20/minute")
+@app.post("/match-links", response_model=MatchLinksResponse)
+async def match_links(request: Request, body: MatchLinksRequest):
+    """
+    Find internal link opportunities using semantic embedding matching.
+    Matches source content windows against candidate target pages.
+    Returns ranked matches above the similarity threshold.
+    """
+    targets_as_dicts = [{"url": t.url, "title": t.title} for t in body.targets]
+    matches = find_link_opportunities(
+        source_content=body.source_content,
+        targets=targets_as_dicts,
+        threshold=body.threshold,
+    )
+    return MatchLinksResponse(
+        matches=[LinkMatch(**m) for m in matches]
+    )
 
 
 @limiter.limit("10/minute")

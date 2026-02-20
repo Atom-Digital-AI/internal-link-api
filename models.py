@@ -116,3 +116,28 @@ class HealthResponse(BaseModel):
 # Config
 class ConfigResponse(BaseModel):
     max_bulk_urls: int
+
+
+# Embedding-based link matching
+class MatchTarget(BaseModel):
+    url: str
+    title: str
+
+
+class MatchLinksRequest(BaseModel):
+    source_content: str
+    targets: list[MatchTarget]
+    threshold: float = 0.7
+
+
+class LinkMatch(BaseModel):
+    target_url: str
+    target_title: str
+    similarity: float
+    matched_text: str
+    start_idx: int
+    end_idx: int
+
+
+class MatchLinksResponse(BaseModel):
+    matches: list[LinkMatch]
