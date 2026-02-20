@@ -19,3 +19,4 @@ google-genai
 google-auth>=2.0.0
 crawl4ai
 sentence-transformers>=2.2.0
+sentry-sdk[fastapi]

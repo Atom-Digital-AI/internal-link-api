@@ -3,6 +3,8 @@ import hashlib
 import logging
 import os
 import secrets
+
+import sentry_sdk
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -209,8 +211,9 @@ async def google_auth(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid Google token.",
         )
-    except Exception:
+    except Exception as e:
         logger.exception("Google token verification failed")
+        sentry_sdk.capture_exception(e)
         raise
 
     google_id = idinfo["sub"]
@@ -394,8 +397,8 @@ async def forgot_password(
             from email_service import send_password_reset_email
 
             send_password_reset_email(user.email, raw_token)
-        except Exception:
-            pass  # Email failures must not break the flow
+        except Exception as e:
+            sentry_sdk.capture_exception(e)
 
     return {"message": "If that email exists, a reset link has been sent."}
 
