@@ -56,6 +56,7 @@ function App() {
   const [sourcePages, setSourcePages] = useState<PageInfo[]>([]);
   const [targetPages, setTargetPages] = useState<PageInfo[]>([]);
   const [selectedUrls, setSelectedUrls] = useState<Set<string>>(new Set());
+  const [discoveryMethod, setDiscoveryMethod] = useState<'sitemap' | 'crawl'>('sitemap');
 
   // Analysis results
   const [results, setResults] = useState<PageResult[]>([]);
@@ -137,8 +138,9 @@ function App() {
     setLoading(true);
 
     try {
-      const data = await getSitemap(domain, sourcePattern, targetPattern);
+      const data = await getSitemap(domain, sourcePattern, targetPattern, accessToken);
       setSourcePages(data.source_pages);
+      setDiscoveryMethod(data.discovery_method);
       setTargetPages(data.target_pages);
       setSelectedUrls(new Set(data.source_pages.slice(0, 10).map(p => p.url)));
       setStep('select');
@@ -918,6 +920,11 @@ function App() {
                   <span>Free plan supports up to 10 URLs. Upgrade to Pro for 500 URLs.</span>
                   <Link to="/pricing" style={{ color: 'inherit', fontWeight: 600, whiteSpace: 'nowrap', marginLeft: '12px' }}>Upgrade to Pro →</Link>
                 </div>
+              )}
+              {discoveryMethod === 'crawl' && (
+                <p style={{ color: '#f59e0b', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
+                  No sitemap found — discovered {sourcePages.length + targetPages.length} pages by crawling the site.
+                </p>
               )}
               <div className="select-header">
                 <h2>Select Pages to Analyze</h2>

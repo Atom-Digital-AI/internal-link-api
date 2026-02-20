@@ -15,6 +15,7 @@ export interface SitemapResponse {
   target_pages: PageInfo[];
   total_found: number;
   sitemap_url: string | null;
+  discovery_method: 'sitemap' | 'crawl';
 }
 
 export interface AnalyzeResponse {

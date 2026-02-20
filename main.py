@@ -7,15 +7,17 @@ from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
-from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
-from slowapi.util import get_remote_address
+
+from rate_limit import limiter
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from auth.dependencies import get_current_user
 from database import get_db
-from db_models import BlogPost
+from db_models import BlogPost, User
 
 from models import (
     AnalyzeRequest,
@@ -45,11 +47,7 @@ from blog.router import router as blog_router
 
 # Configurable limits via environment variables
 MAX_BULK_URLS = int(os.environ.get("MAX_BULK_URLS", "100"))
-
-# ---------------------------------------------------------------------------
-# Rate Limiter
-# ---------------------------------------------------------------------------
-limiter = Limiter(key_func=get_remote_address)
+CRAWL_PAGE_LIMITS = {"free": 10, "starter": 50, "pro": 500}
 
 # ---------------------------------------------------------------------------
 # App
@@ -63,6 +61,22 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
+
+# ---------------------------------------------------------------------------
+# Security Headers (added BEFORE CORS — Starlette middleware runs LIFO,
+# so security headers execute AFTER CORS, avoiding conflicts)
+# ---------------------------------------------------------------------------
+
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    return response
+
 
 # ---------------------------------------------------------------------------
 # CORS
@@ -80,12 +94,18 @@ else:
         "http://127.0.0.1:5174",
     ]
 
+if "*" in allowed_origins:
+    raise RuntimeError(
+        "ALLOWED_ORIGINS cannot contain '*' when allow_credentials=True. "
+        "Specify exact origins instead."
+    )
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-API-Key", "X-Internal-Secret"],
 )
 
 # ---------------------------------------------------------------------------
@@ -121,38 +141,44 @@ async def get_config():
 
 
 @app.post("/sitemap", response_model=SitemapResponse)
-async def get_sitemap(request: SitemapRequest):
+async def get_sitemap(request: SitemapRequest, current_user: User = Depends(get_current_user)):
     """
     Fetch and parse a site's sitemap to get all URLs.
     Filters URLs by source_pattern and target_pattern.
+    Falls back to crawling if no sitemap found.
     """
+    max_crawl_pages = CRAWL_PAGE_LIMITS.get(current_user.plan, 10)
     result = await fetch_sitemap(
         str(request.domain),
         request.source_pattern,
         request.target_pattern,
+        max_crawl_pages=max_crawl_pages,
     )
     return SitemapResponse(**result)
 
 
+@limiter.limit("30/minute")
 @app.post("/analyze", response_model=AnalyzeResponse)
-async def analyze_url(request: AnalyzeRequest):
+async def analyze_url(request: Request, body: AnalyzeRequest):
     """
     Scrape a single URL and return link audit data.
     """
-    return await analyze_page(str(request.url), request.target_pattern)
+    return await analyze_page(str(body.url), body.target_pattern)
 
 
+@limiter.limit("30/minute")
 @app.post("/fetch-target", response_model=TargetPageInfo)
-async def fetch_target(request: FetchTargetRequest):
+async def fetch_target(request: Request, body: FetchTargetRequest):
     """
     Fetch a target page and extract its title and keywords for semantic matching.
     Use this to get keywords for relevance scoring in focused search mode.
     """
-    return await fetch_target_page_content(str(request.url))
+    return await fetch_target_page_content(str(body.url))
 
 
+@limiter.limit("10/minute")
 @app.post("/bulk-analyze", response_model=BulkAnalyzeResponse)
-async def bulk_analyze(request: BulkAnalyzeRequest):
+async def bulk_analyze(request: Request, body: BulkAnalyzeRequest):
     """
     Analyze multiple URLs with a 1-second delay between requests.
     Classifies pages by link density: low (<0.35%), good (0.35%-0.7%), high (>0.7%).
@@ -162,10 +188,10 @@ async def bulk_analyze(request: BulkAnalyzeRequest):
     - filter_keyword: Additional keyword to focus on
     - filter_match_type: "exact" or "stemmed" matching
     """
-    if len(request.urls) > MAX_BULK_URLS:
+    if len(body.urls) > MAX_BULK_URLS:
         raise HTTPException(
             status_code=400,
-            detail=f"Too many URLs. Maximum allowed: {MAX_BULK_URLS}, received: {len(request.urls)}"
+            detail=f"Too many URLs. Maximum allowed: {MAX_BULK_URLS}, received: {len(body.urls)}"
         )
 
     # Build keyword list for relevance scoring
@@ -173,14 +199,14 @@ async def bulk_analyze(request: BulkAnalyzeRequest):
     target_page_info = None
 
     # If a target URL is specified, fetch its content and extract keywords
-    if request.filter_target_url:
-        target_page_info = await fetch_target_page_content(request.filter_target_url)
+    if body.filter_target_url:
+        target_page_info = await fetch_target_page_content(body.filter_target_url)
         filter_keywords.extend(target_page_info.keywords)
 
     # Add explicit keyword filter if provided
-    if request.filter_keyword:
-        filter_keywords.append(request.filter_keyword)
-        words = request.filter_keyword.split()
+    if body.filter_keyword:
+        filter_keywords.append(body.filter_keyword)
+        words = body.filter_keyword.split()
         if len(words) > 1:
             filter_keywords.extend(words)
 
@@ -190,12 +216,12 @@ async def bulk_analyze(request: BulkAnalyzeRequest):
     high_density = 0
     failed = 0
 
-    for url in request.urls:
+    for url in body.urls:
         result = await analyze_page_summary(
             str(url),
-            request.target_pattern,
+            body.target_pattern,
             filter_keywords=filter_keywords if filter_keywords else None,
-            filter_match_type=request.filter_match_type,
+            filter_match_type=body.filter_match_type,
         )
         results.append(result)
 
@@ -209,7 +235,7 @@ async def bulk_analyze(request: BulkAnalyzeRequest):
             good_density += 1
 
         # Be polite - 1 second delay between requests
-        if url != request.urls[-1]:
+        if url != body.urls[-1]:
             await asyncio.sleep(1)
 
     return BulkAnalyzeResponse(
@@ -274,7 +300,7 @@ async def sitemap(db: AsyncSession = Depends(get_db)) -> Response:
 
     # VS / comparison pages
     for slug in _VS_SLUGS:
-        entries.append(_url_entry(base_url, f"/linki-vs-{slug}",
+        entries.append(_url_entry(base_url, f"/linki-vs/{slug}",
                                   lastmod=today,
                                   changefreq="monthly",
                                   priority="0.7"))
@@ -312,9 +338,9 @@ if static_dir.exists():
     @app.get("/{full_path:path}")
     async def serve_spa(full_path: str):
         """Serve the React SPA for any non-API routes."""
-        # Check if it's a file in static directory
-        file_path = static_dir / full_path
-        if file_path.exists() and file_path.is_file():
+        # Check if it's a file in static directory (with path traversal protection)
+        file_path = (static_dir / full_path).resolve()
+        if file_path.is_file() and str(file_path).startswith(str(static_dir.resolve())):
             return FileResponse(file_path)
         # Otherwise serve index.html for SPA routing
         return FileResponse(static_dir / "index.html")

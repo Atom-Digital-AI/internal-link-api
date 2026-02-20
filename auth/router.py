@@ -1,5 +1,6 @@
 """Auth router: register, login, logout, token refresh, password reset, user profile."""
 import hashlib
+import logging
 import os
 import secrets
 from datetime import datetime, timedelta, timezone
@@ -13,6 +14,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token as google_id_token
 
+from auth.disposable_email import is_disposable_email
+
+from rate_limit import limiter
 from auth.dependencies import get_current_user as get_current_user_dep
 from auth.utils import (
     create_access_token,
@@ -30,6 +34,8 @@ user_router = APIRouter(prefix="/user", tags=["user"])
 
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -94,8 +100,10 @@ def _clear_refresh_cookie(response: Response) -> None:
 # ---------------------------------------------------------------------------
 
 
+@limiter.limit("5/minute")
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 async def register(
+    request: Request,
     request_body: RegisterRequest,
     response: Response,
     db: AsyncSession = Depends(get_db),
@@ -109,6 +117,12 @@ async def register(
         validate_password_strength(request_body.password)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+    if is_disposable_email(request_body.email):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Registration with disposable email addresses is not allowed.",
+        )
 
     existing = await db.execute(select(User).where(User.email == request_body.email))
     if existing.scalar_one_or_none() is not None:
@@ -134,10 +148,11 @@ async def register(
 
 
 # ---------------------------------------------------------------------------
-# POST /auth/login (rate limited: 10/15min per IP - applied in main.py)
+# POST /auth/login
 # ---------------------------------------------------------------------------
 
 
+@limiter.limit("5/minute")
 @router.post("/login", response_model=TokenResponse)
 async def login(
     request_body: LoginRequest,
@@ -168,8 +183,10 @@ async def login(
 # ---------------------------------------------------------------------------
 
 
+@limiter.limit("10/minute")
 @router.post("/google", response_model=TokenResponse)
 async def google_auth(
+    request: Request,
     request_body: GoogleAuthRequest,
     response: Response,
     db: AsyncSession = Depends(get_db),
@@ -192,6 +209,9 @@ async def google_auth(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid Google token.",
         )
+    except Exception:
+        logger.exception("Google token verification failed")
+        raise
 
     google_id = idinfo["sub"]
     email = idinfo.get("email", "").lower()
@@ -217,6 +237,11 @@ async def google_auth(
             await db.flush()
         else:
             # 3. Create new user (Google-only, no password)
+            if is_disposable_email(email):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Registration with disposable email addresses is not allowed.",
+                )
             user = User(email=email, google_id=google_id)
             db.add(user)
             await db.flush()
@@ -346,8 +371,10 @@ class ForgotPasswordRequest(BaseModel):
     email: EmailStr
 
 
+@limiter.limit("3/minute")
 @router.post("/forgot-password", status_code=status.HTTP_200_OK)
 async def forgot_password(
+    request: Request,
     request_body: ForgotPasswordRequest,
     db: AsyncSession = Depends(get_db),
 ) -> dict:
@@ -493,13 +520,16 @@ async def get_my_usage(
     result = await db.execute(select(AiUsage).where(AiUsage.user_id == current_user.id))
     ai_usage = result.scalar_one_or_none()
 
+    ai_limits = {"starter": 30, "pro": 200}
+    plan_limit = ai_limits.get(current_user.plan, 0)
+
     if ai_usage is None:
-        return UsageResponse(call_count=0, period_end=None, limit=200)
+        return UsageResponse(call_count=0, period_end=None, limit=plan_limit)
 
     return UsageResponse(
         call_count=ai_usage.call_count,
         period_end=ai_usage.period_end,
-        limit=200,
+        limit=plan_limit,
     )
 
 
@@ -531,6 +561,12 @@ async def update_email(
         )
 
     new_email = str(request_body.new_email).lower()
+
+    if is_disposable_email(new_email):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Disposable email addresses are not allowed.",
+        )
 
     if new_email == current_user.email.lower():
         raise HTTPException(

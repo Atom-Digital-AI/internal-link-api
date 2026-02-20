@@ -46,14 +46,10 @@ internal-link-api/
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `VITE_API_URL` | http://localhost:8000 | Backend API URL |
-| `VITE_GEMINI_API_KEY` | (required) | Gemini API key for AI suggestions |
-| `VITE_GEMINI_MODEL` | gemini-1.5-flash | Gemini model to use |
 
 For local development, create `frontend/.env`:
 ```bash
 VITE_API_URL=http://localhost:8000
-VITE_GEMINI_API_KEY=your-api-key-here
-VITE_GEMINI_MODEL=gemini-1.5-flash
 ```
 
 ## API Endpoints
@@ -141,11 +137,8 @@ The Dockerfile builds both frontend and API into a single container. Railway aut
 
 1. Create new project in Railway
 2. Connect GitHub repo
-3. Set **build arguments** in Railway (Settings → Build → Build Arguments):
-   - `VITE_GEMINI_API_KEY` = your Gemini API key
-   - `VITE_GEMINI_MODEL` = `gemini-1.5-flash` (optional)
-4. Deploy - Railway builds and serves everything from one service
-5. Set custom domain if needed
+3. Deploy - Railway builds and serves everything from one service
+4. Set custom domain if needed
 
 The API serves both:
 - API endpoints at `/health`, `/config`, `/sitemap`, `/analyze`, `/bulk-analyze`

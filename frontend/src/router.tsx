@@ -66,7 +66,7 @@ export default function AppRouter() {
           </ProtectedRoute>
         }
       />
-      <Route path="/linki-vs-:slug" element={<VsPage />} />
+      <Route path="/linki-vs/:slug" element={<VsPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

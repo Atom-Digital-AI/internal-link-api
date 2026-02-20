@@ -26,6 +26,7 @@ class SitemapResponse(BaseModel):
     target_pages: list[PageInfo]
     total_found: int
     sitemap_url: Optional[str] = None
+    discovery_method: Literal["sitemap", "crawl"] = "sitemap"
 
 
 # Analyze models

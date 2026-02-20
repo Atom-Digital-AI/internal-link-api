@@ -15,6 +15,11 @@ from db_models import BlogPost
 router = APIRouter(prefix="/blog", tags=["blog"])
 
 BLOG_API_KEY = os.environ.get("BLOG_API_KEY", "")
+if not BLOG_API_KEY:
+    import logging
+    logging.getLogger(__name__).warning(
+        "BLOG_API_KEY not set — /blog/* write endpoints will reject all requests"
+    )
 
 
 def _verify_api_key(x_api_key: str = Header(default="")) -> None:
