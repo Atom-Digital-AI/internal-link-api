@@ -1,9 +1,13 @@
 import type { PageInfo, AnalyzeResponse, LinkSuggestion, MatchType } from '../types';
-import { getAiSuggestion } from './api';
+import { getAiSuggestion, matchLinks } from './api';
 
-// Note: VITE_GEMINI_API_KEY and VITE_GEMINI_MODEL are no longer used.
-// AI suggestions are proxied through the backend /ai/suggest endpoint.
-
+/**
+ * Get internal link suggestions using embedding matching + optional AI enhancement.
+ *
+ * Step 1: Call /match-links to find semantically similar content windows.
+ * Step 2 (paid users): Call /ai/suggest for each match to get anchor text + reasoning.
+ * Step 2 (free users): Return matches directly with matched_text as the suggestion.
+ */
 export async function getInternalLinkSuggestions(
   pageData: AnalyzeResponse,
   targetPages: PageInfo[],
@@ -12,50 +16,70 @@ export async function getInternalLinkSuggestions(
   _filterMatchType?: MatchType,
   accessToken?: string | null
 ): Promise<LinkSuggestion[]> {
-  // Determine which target pages to request suggestions for
-  const pagesToAnalyze = filterTargetUrl
-    ? targetPages.filter(p => p.url === filterTargetUrl).slice(0, 1)
-    : targetPages.slice(0, 5);
+  const token = accessToken || null;
 
-  if (pagesToAnalyze.length === 0) {
-    throw new Error('No target pages available for AI suggestions.');
+  // Build target list with titles (use URL slug as fallback title)
+  const pagesToMatch = filterTargetUrl
+    ? targetPages.filter(p => p.url === filterTargetUrl)
+    : targetPages.slice(0, 20);
+
+  if (pagesToMatch.length === 0) {
+    throw new Error('No target pages available for matching.');
   }
 
-  const token = accessToken || null;
-  const sourceContent = pageData.extracted_content.slice(0, 6000);
+  const targets = pagesToMatch.map(p => ({
+    url: p.url,
+    title: p.url.split('/').filter(Boolean).slice(-2).join(' ').replace(/-/g, ' ') || p.url,
+  }));
 
-  // Call backend /ai/suggest for each target page and collect suggestions
-  const results = await Promise.allSettled(
-    pagesToAnalyze.map(target =>
+  // Step 1: Embedding-based matching (free, all users)
+  const { matches } = await matchLinks(token, pageData.extracted_content, targets);
+
+  if (matches.length === 0) {
+    throw new Error('No relevant link opportunities found for this page.');
+  }
+
+  // Step 2: Enhance top matches with AI (paid users only)
+  // Try AI suggestions — if it fails (free user / limit reached), fall back to raw matches
+  const suggestions: LinkSuggestion[] = [];
+
+  const aiResults = await Promise.allSettled(
+    matches.slice(0, 5).map(match =>
       getAiSuggestion(token, {
         source_url: pageData.url,
-        source_content: sourceContent,
-        target_url: target.url,
-        target_title: target.url,
+        source_content: match.matched_text,
+        target_url: match.target_url,
+        target_title: match.target_title,
         target_keywords: [],
       })
     )
   );
 
-  const suggestions: LinkSuggestion[] = [];
+  for (let i = 0; i < matches.length && i < 5; i++) {
+    const match = matches[i];
+    const aiResult = aiResults[i];
 
-  for (let i = 0; i < results.length; i++) {
-    const result = results[i];
-    if (result.status === 'fulfilled') {
-      const { suggestion, reasoning } = result.value;
-      // The backend returns a text suggestion, not structured JSON.
-      // Wrap it into the LinkSuggestion format.
+    if (aiResult.status === 'fulfilled') {
+      // AI-enhanced suggestion
       suggestions.push({
-        sentence: suggestion,
-        targetUrl: pagesToAnalyze[i].url,
-        anchorText: pagesToAnalyze[i].url.split('/').filter(Boolean).pop() || 'link',
-        reason: reasoning,
+        sentence: aiResult.value.suggestion,
+        targetUrl: match.target_url,
+        anchorText: match.target_title,
+        reason: aiResult.value.reasoning,
+      });
+    } else {
+      // Fallback: use the matched text window directly
+      suggestions.push({
+        sentence: match.matched_text,
+        targetUrl: match.target_url,
+        anchorText: match.target_title,
+        reason: `Semantic match (${Math.round(match.similarity * 100)}% relevance)`,
       });
     }
   }
 
   if (suggestions.length === 0) {
-    throw new Error('Failed to get AI suggestions. Please try again.');
+    throw new Error('Failed to generate link suggestions. Please try again.');
   }
 
   return suggestions;
