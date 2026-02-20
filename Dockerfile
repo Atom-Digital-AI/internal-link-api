@@ -52,10 +52,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Copy requirements first for better caching
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')"
 RUN crawl4ai-setup
 
 # Copy application code
-COPY main.py models.py scraper.py sitemap_parser.py fallback_crawler.py database.py db_models.py email_service.py rate_limit.py ./
+COPY main.py models.py scraper.py sitemap_parser.py fallback_crawler.py database.py db_models.py email_service.py rate_limit.py embeddings.py ./
 COPY auth/ ./auth/
 COPY billing/ ./billing/
 COPY blog/ ./blog/

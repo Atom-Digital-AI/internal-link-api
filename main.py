@@ -19,6 +19,7 @@ from auth.dependencies import get_current_user
 from database import get_db
 from db_models import BlogPost, User
 
+from embeddings import find_link_opportunities
 from models import (
     AnalyzeRequest,
     AnalyzeResponse,
@@ -28,11 +29,14 @@ from models import (
     ConfigResponse,
     FetchTargetRequest,
     HealthResponse,
+    LinkMatch,
+    MatchLinksRequest,
+    MatchLinksResponse,
     SitemapRequest,
     SitemapResponse,
     TargetPageInfo,
 )
-from scraper import analyze_page, analyze_page_summary, fetch_target_page_content
+from scraper import analyze_page, analyze_page_summary, calculate_keyword_relevance, fetch_target_page_content
 from sitemap_parser import fetch_sitemap
 
 # New SaaS routers
@@ -174,6 +178,37 @@ async def fetch_target(request: Request, body: FetchTargetRequest):
     Use this to get keywords for relevance scoring in focused search mode.
     """
     return await fetch_target_page_content(str(body.url))
+
+
+@limiter.limit("20/minute")
+@app.post("/match-links", response_model=MatchLinksResponse)
+async def match_links(request: Request, body: MatchLinksRequest):
+    """
+    Find internal link opportunities using semantic embedding matching.
+    Optionally pre-filters targets by keyword relevance before running embeddings.
+    """
+    targets_as_dicts = [{"url": t.url, "title": t.title} for t in body.targets]
+
+    # Pre-filter: if more targets than max_targets, use keyword relevance to narrow down
+    if len(targets_as_dicts) > body.max_targets:
+        scored = []
+        for t in targets_as_dicts:
+            keywords = t["title"].lower().split()
+            if body.filter_keyword:
+                keywords.append(body.filter_keyword.lower())
+            score = calculate_keyword_relevance(body.source_content, keywords)
+            scored.append((score, t))
+        scored.sort(key=lambda x: x[0], reverse=True)
+        targets_as_dicts = [t for _, t in scored[: body.max_targets]]
+
+    matches = find_link_opportunities(
+        source_content=body.source_content,
+        targets=targets_as_dicts,
+        threshold=body.threshold,
+    )
+    return MatchLinksResponse(
+        matches=[LinkMatch(**m) for m in matches]
+    )
 
 
 @limiter.limit("10/minute")

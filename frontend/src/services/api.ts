@@ -5,6 +5,7 @@ import type {
   BulkAnalyzeResponse,
   FilterOptions,
   TargetPageInfo,
+  MatchLinksResponse,
 } from '../types';
 
 // Use relative URLs in production (same origin), absolute URL for local dev
@@ -185,6 +186,7 @@ export interface AiSuggestionRequest {
 export interface AiSuggestionResponse {
   suggestion: string;
   reasoning: string;
+  suggestion_type?: string;
 }
 
 export interface CheckoutSessionResponse {
@@ -266,6 +268,26 @@ export async function getAiSuggestion(
   return fetchJson<AiSuggestionResponse>(
     `${API_BASE}/ai/suggest`,
     { method: 'POST', body: JSON.stringify(data) },
+    token
+  );
+}
+
+export async function matchLinks(
+  token: string | null,
+  sourceContent: string,
+  targets: { url: string; title: string }[],
+  threshold: number = 0.7
+): Promise<MatchLinksResponse> {
+  return fetchJson<MatchLinksResponse>(
+    `${API_BASE}/match-links`,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        source_content: sourceContent,
+        targets,
+        threshold,
+      }),
+    },
     token
   );
 }
