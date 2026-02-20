@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { Helmet } from 'react-helmet-async'
 import MarketingNav from '../components/MarketingNav'
 import MarketingFooter from '../components/MarketingFooter'
 
@@ -51,9 +52,55 @@ const pricingFeatures = [
   { freeLabel: 'Priority support',     proLabel: 'Priority support',           free: false },
 ]
 
+const softwareApplicationSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  name: 'Linki',
+  applicationCategory: 'BusinessApplication',
+  operatingSystem: 'Web',
+  url: 'https://getlinki.app',
+  description: 'AI-powered internal linking tool that finds pages needing links and suggests exactly where to add them.',
+  offers: [
+    {
+      '@type': 'Offer',
+      name: 'Free',
+      price: '0',
+      priceCurrency: 'GBP',
+    },
+    {
+      '@type': 'Offer',
+      name: 'Starter',
+      price: '4.99',
+      priceCurrency: 'GBP',
+      billingIncrement: 'P1M',
+    },
+    {
+      '@type': 'Offer',
+      name: 'Pro',
+      price: '14.99',
+      priceCurrency: 'GBP',
+      billingIncrement: 'P1M',
+    },
+  ],
+}
+
 export default function Home() {
   return (
     <div style={{ fontFamily: 'var(--font-sans)', background: '#F5F5F7' }}>
+      <Helmet>
+        <title>Linki - AI-Powered Internal Linking Tool for SEO</title>
+        <meta name="description" content="Linki finds pages that need internal links and uses AI to suggest exactly where to add them. Improve your site structure and boost SEO." />
+        <link rel="canonical" href="https://getlinki.app/" />
+        <meta property="og:title" content="Linki - AI-Powered Internal Linking Tool for SEO" />
+        <meta property="og:description" content="Linki finds pages that need internal links and uses AI to suggest exactly where to add them. Improve your site structure and boost SEO." />
+        <meta property="og:url" content="https://getlinki.app/" />
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="Linki" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Linki - AI-Powered Internal Linking Tool for SEO" />
+        <meta name="twitter:description" content="Linki finds pages that need internal links and uses AI to suggest exactly where to add them. Improve your site structure and boost SEO." />
+        <script type="application/ld+json">{JSON.stringify(softwareApplicationSchema)}</script>
+      </Helmet>
       <MarketingNav />
 
       {/* Hero */}

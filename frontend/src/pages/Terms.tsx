@@ -1,9 +1,23 @@
+import { Helmet } from 'react-helmet-async'
 import MarketingNav from '../components/MarketingNav'
 import MarketingFooter from '../components/MarketingFooter'
 
 export default function Terms() {
   return (
     <div style={{ fontFamily: 'var(--font-sans)', background: '#FFFFFF' }}>
+      <Helmet>
+        <title>Terms of Service — Linki</title>
+        <meta name="description" content="Read the terms and conditions for using Linki, the AI-powered internal linking tool." />
+        <link rel="canonical" href="https://getlinki.app/terms" />
+        <meta property="og:title" content="Terms of Service — Linki" />
+        <meta property="og:description" content="Read the terms and conditions for using Linki, the AI-powered internal linking tool." />
+        <meta property="og:url" content="https://getlinki.app/terms" />
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="Linki" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Terms of Service — Linki" />
+        <meta name="twitter:description" content="Read the terms and conditions for using Linki, the AI-powered internal linking tool." />
+      </Helmet>
       <MarketingNav />
       <div style={{ maxWidth: '700px', margin: '0 auto', padding: '120px 40px 80px' }}>
         <h1 style={{ fontSize: '2.5rem', fontWeight: 800, letterSpacing: '-0.04em', color: '#1D1D1F', margin: '0 0 8px' }}>

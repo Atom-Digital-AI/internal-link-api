@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Helmet } from 'react-helmet-async'
 import MarketingNav from '../components/MarketingNav'
 import MarketingFooter from '../components/MarketingFooter'
 import { fetchBlogPosts, type BlogPostSummary } from '../services/api'
@@ -25,6 +26,19 @@ export default function BlogList() {
 
   return (
     <div style={{ fontFamily: 'var(--font-sans)', background: '#F5F5F7', minHeight: '100vh' }}>
+      <Helmet>
+        <title>Blog — Linki</title>
+        <meta name="description" content="Tips, guides, and articles on internal linking strategy, SEO best practices, and how to improve your site structure with Linki." />
+        <link rel="canonical" href="https://getlinki.app/blog" />
+        <meta property="og:title" content="Blog — Linki" />
+        <meta property="og:description" content="Tips, guides, and articles on internal linking strategy, SEO best practices, and how to improve your site structure with Linki." />
+        <meta property="og:url" content="https://getlinki.app/blog" />
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="Linki" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Blog — Linki" />
+        <meta name="twitter:description" content="Tips, guides, and articles on internal linking strategy, SEO best practices, and how to improve your site structure with Linki." />
+      </Helmet>
       <MarketingNav />
 
       <main style={{ maxWidth: '900px', margin: '0 auto', padding: '120px 40px 80px' }}>
@@ -72,7 +86,7 @@ export default function BlogList() {
                 {post.cover_image && (
                   <img
                     src={post.cover_image}
-                    alt=""
+                    alt={post.title}
                     style={{ width: '200px', objectFit: 'cover', flexShrink: 0 }}
                   />
                 )}

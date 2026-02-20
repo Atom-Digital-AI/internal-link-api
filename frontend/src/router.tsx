@@ -1,5 +1,14 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
+import { Helmet } from 'react-helmet-async'
 import { useAuth } from './contexts/AuthContext'
+
+const organizationSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  name: 'Linki',
+  url: 'https://getlinki.app',
+  description: 'Smart internal linking tool with AI-powered suggestions',
+}
 
 // Pages
 import Login from './pages/Login'
@@ -38,6 +47,10 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 export default function AppRouter() {
   return (
+    <>
+    <Helmet>
+      <script type="application/ld+json">{JSON.stringify(organizationSchema)}</script>
+    </Helmet>
     <Routes>
       <Route path="/" element={<Home />} />
       <Route
@@ -69,5 +82,6 @@ export default function AppRouter() {
       <Route path="/linki-vs/:slug" element={<VsPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </>
   )
 }

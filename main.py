@@ -286,7 +286,7 @@ def _url_entry(base: str, loc: str, lastmod: str | None = None,
 
 @app.get("/sitemap.xml", include_in_schema=False)
 async def sitemap(db: AsyncSession = Depends(get_db)) -> Response:
-    base_url = os.environ.get("SITE_URL", "https://linki.tools").rstrip("/")
+    base_url = os.environ.get("SITE_URL", "https://getlinki.app").rstrip("/")
     today = datetime.now(timezone.utc).date().isoformat()
 
     entries: list[str] = []

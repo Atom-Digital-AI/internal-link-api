@@ -53,4 +53,4 @@ Disallow: /register/
 Disallow: /forgot-password/
 Disallow: /reset-password/
 
-Sitemap: https://linki.tools/sitemap.xml
+Sitemap: https://getlinki.app/sitemap.xml

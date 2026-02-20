@@ -1,9 +1,46 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import { Helmet } from 'react-helmet-async'
 import { useAuth } from '../contexts/AuthContext'
 import MarketingNav from '../components/MarketingNav'
 import MarketingFooter from '../components/MarketingFooter'
 import { createCheckoutSession, upgradeToPro } from '../services/api'
+
+const faqItems = [
+  {
+    q: 'Can I cancel my subscription at any time?',
+    a: 'Yes. Cancel from your account settings and your subscription ends at the next billing date. You keep access until then.',
+  },
+  {
+    q: 'How do I upgrade from Starter to Pro?',
+    a: 'Click "Upgrade to Pro" on the pricing page or in your account. Stripe calculates unused Starter credit and charges only the difference — you get Pro access instantly.',
+  },
+  {
+    q: 'What counts as an AI suggestion?',
+    a: 'Each time Linki generates a link recommendation for a page using Google Gemini, that counts as one suggestion. Starter plans include 30 per month; Pro plans include 200.',
+  },
+  {
+    q: 'What happens to my saved sessions if I downgrade?',
+    a: 'Your sessions are kept on our servers for 30 days after downgrading in case you re-subscribe. After that they are permanently deleted.',
+  },
+  {
+    q: 'Do you offer refunds?',
+    a: 'We don\'t offer partial-month refunds, but if something goes wrong please email hello@linki.app and we\'ll do our best to help.',
+  },
+]
+
+const faqPageSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: faqItems.map(({ q, a }) => ({
+    '@type': 'Question',
+    name: q,
+    acceptedAnswer: {
+      '@type': 'Answer',
+      text: a,
+    },
+  })),
+}
 
 const comparisonRows: { label: string; free: string | null; starter: string | null; pro: string }[] = [
   { label: 'URLs per scan',        free: '10',     starter: '50',          pro: '500'        },
@@ -99,6 +136,20 @@ export default function Pricing() {
 
   return (
     <>
+      <Helmet>
+        <title>Pricing - Linki | Free, Starter & Pro Plans</title>
+        <meta name="description" content="Choose the right Linki plan: Free for basic link analysis, Starter for AI suggestions, or Pro for 500 URLs, unlimited sessions, and priority support." />
+        <link rel="canonical" href="https://getlinki.app/pricing" />
+        <meta property="og:title" content="Pricing - Linki | Free, Starter & Pro Plans" />
+        <meta property="og:description" content="Choose the right Linki plan: Free for basic link analysis, Starter for AI suggestions, or Pro for 500 URLs, unlimited sessions, and priority support." />
+        <meta property="og:url" content="https://getlinki.app/pricing" />
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="Linki" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Pricing - Linki | Free, Starter & Pro Plans" />
+        <meta name="twitter:description" content="Choose the right Linki plan: Free for basic link analysis, Starter for AI suggestions, or Pro for 500 URLs, unlimited sessions, and priority support." />
+        <script type="application/ld+json">{JSON.stringify(faqPageSchema)}</script>
+      </Helmet>
       <MarketingNav />
       <div style={{
         minHeight: '100vh',
@@ -474,28 +525,7 @@ export default function Pricing() {
             Frequently asked questions
           </h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)' }}>
-            {[
-              {
-                q: 'Can I cancel my subscription at any time?',
-                a: 'Yes. Cancel from your account settings and your subscription ends at the next billing date. You keep access until then.',
-              },
-              {
-                q: 'How do I upgrade from Starter to Pro?',
-                a: 'Click "Upgrade to Pro" on the pricing page or in your account. Stripe calculates unused Starter credit and charges only the difference — you get Pro access instantly.',
-              },
-              {
-                q: 'What counts as an AI suggestion?',
-                a: 'Each time Linki generates a link recommendation for a page using Google Gemini, that counts as one suggestion. Starter plans include 30 per month; Pro plans include 200.',
-              },
-              {
-                q: 'What happens to my saved sessions if I downgrade?',
-                a: 'Your sessions are kept on our servers for 30 days after downgrading in case you re-subscribe. After that they are permanently deleted.',
-              },
-              {
-                q: 'Do you offer refunds?',
-                a: 'We don\'t offer partial-month refunds, but if something goes wrong please email hello@linki.app and we\'ll do our best to help.',
-              },
-            ].map(({ q, a }) => (
+            {faqItems.map(({ q, a }) => (
               <div key={q} style={{
                 background: '#FFFFFF',
                 borderRadius: 'var(--radius-xl)',

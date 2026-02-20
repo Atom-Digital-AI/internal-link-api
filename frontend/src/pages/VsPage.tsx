@@ -1,4 +1,5 @@
 import { Link, useParams } from 'react-router-dom'
+import { Helmet } from 'react-helmet-async'
 import MarketingNav from '../components/MarketingNav'
 import MarketingFooter from '../components/MarketingFooter'
 import { getCompetitor } from '../data/competitors'
@@ -53,6 +54,19 @@ export default function VsPage() {
 
   return (
     <div style={{ fontFamily: 'var(--font-sans)', background: '#F5F5F7' }}>
+      <Helmet>
+        <title>{`Linki vs ${competitor.name} — Comparison`}</title>
+        <meta name="description" content={competitor.heroSubhead} />
+        <link rel="canonical" href={`https://getlinki.app/linki-vs/${slug}`} />
+        <meta property="og:title" content={`Linki vs ${competitor.name} — Comparison`} />
+        <meta property="og:description" content={competitor.heroSubhead} />
+        <meta property="og:url" content={`https://getlinki.app/linki-vs/${slug}`} />
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="Linki" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={`Linki vs ${competitor.name} — Comparison`} />
+        <meta name="twitter:description" content={competitor.heroSubhead} />
+      </Helmet>
       <MarketingNav />
 
       {/* Hero */}

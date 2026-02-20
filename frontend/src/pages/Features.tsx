@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { Helmet } from 'react-helmet-async'
 import MarketingNav from '../components/MarketingNav'
 import MarketingFooter from '../components/MarketingFooter'
 
@@ -44,6 +45,19 @@ const features = [
 export default function Features() {
   return (
     <div style={{ fontFamily: 'var(--font-sans)' }}>
+      <Helmet>
+        <title>Features - Linki Internal Linking Tool</title>
+        <meta name="description" content="Discover Linki's features: bulk URL scanning, AI-powered link suggestions, cloud sessions, saved opportunities, link health tracking, and CSV export." />
+        <link rel="canonical" href="https://getlinki.app/features" />
+        <meta property="og:title" content="Features - Linki Internal Linking Tool" />
+        <meta property="og:description" content="Discover Linki's features: bulk URL scanning, AI-powered link suggestions, cloud sessions, saved opportunities, link health tracking, and CSV export." />
+        <meta property="og:url" content="https://getlinki.app/features" />
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="Linki" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Features - Linki Internal Linking Tool" />
+        <meta name="twitter:description" content="Discover Linki's features: bulk URL scanning, AI-powered link suggestions, cloud sessions, saved opportunities, link health tracking, and CSV export." />
+      </Helmet>
       <MarketingNav />
 
       {/* Hero */}

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link, Navigate } from 'react-router-dom'
+import { Helmet } from 'react-helmet-async'
 import DOMPurify from 'dompurify'
 import MarketingNav from '../components/MarketingNav'
 import MarketingFooter from '../components/MarketingFooter'
@@ -46,6 +47,34 @@ export default function BlogPost() {
 
         {post && (
           <>
+            <Helmet>
+              <title>{`${post.title} — Linki`}</title>
+              <meta name="description" content={post.excerpt || `Read "${post.title}" on the Linki blog.`} />
+              <link rel="canonical" href={`https://getlinki.app/blog/${post.slug}`} />
+              <meta property="og:title" content={`${post.title} — Linki`} />
+              <meta property="og:description" content={post.excerpt || `Read "${post.title}" on the Linki blog.`} />
+              <meta property="og:url" content={`https://getlinki.app/blog/${post.slug}`} />
+              <meta property="og:type" content="article" />
+              <meta property="og:site_name" content="Linki" />
+              {post.cover_image && <meta property="og:image" content={post.cover_image} />}
+              <meta name="twitter:card" content="summary_large_image" />
+              <meta name="twitter:title" content={`${post.title} — Linki`} />
+              <meta name="twitter:description" content={post.excerpt || `Read "${post.title}" on the Linki blog.`} />
+              <script type="application/ld+json">{JSON.stringify({
+                '@context': 'https://schema.org',
+                '@type': 'BlogPosting',
+                headline: post.title,
+                ...(post.excerpt ? { description: post.excerpt } : {}),
+                ...(post.published_at ? { datePublished: post.published_at } : {}),
+                ...(post.cover_image ? { image: post.cover_image } : {}),
+                url: `https://getlinki.app/blog/${post.slug}`,
+                author: {
+                  '@type': 'Organization',
+                  name: 'Linki',
+                  url: 'https://getlinki.app',
+                },
+              })}</script>
+            </Helmet>
             {post.published_at && (
               <p style={{ fontSize: '0.875rem', color: '#6E6E73', margin: '0 0 12px' }}>
                 {formatDate(post.published_at)}
@@ -66,7 +95,7 @@ export default function BlogPost() {
             {post.cover_image && (
               <img
                 src={post.cover_image}
-                alt=""
+                alt={post.title}
                 style={{
                   width: '100%',
                   borderRadius: '16px',
