@@ -1,11 +1,11 @@
 import { Link } from 'react-router-dom'
 
 const compareLinks = [
-  { to: '/linki-vs-link-whisper', label: 'Linki vs Link Whisper' },
-  { to: '/linki-vs-linkstorm',    label: 'Linki vs LinkStorm' },
-  { to: '/linki-vs-inlinks',      label: 'Linki vs InLinks' },
-  { to: '/linki-vs-linkboss',     label: 'Linki vs LinkBoss' },
-  { to: '/linki-vs-seojuice',     label: 'Linki vs SEOJuice' },
+  { to: '/linki-vs/link-whisper', label: 'Linki vs Link Whisper' },
+  { to: '/linki-vs/linkstorm',    label: 'Linki vs LinkStorm' },
+  { to: '/linki-vs/inlinks',      label: 'Linki vs InLinks' },
+  { to: '/linki-vs/linkboss',     label: 'Linki vs LinkBoss' },
+  { to: '/linki-vs/seojuice',     label: 'Linki vs SEOJuice' },
 ]
 
 export default function MarketingFooter() {
