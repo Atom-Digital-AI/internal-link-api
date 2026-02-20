@@ -14,6 +14,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token as google_id_token
 
+from auth.disposable_email import is_disposable_email
+
 from rate_limit import limiter
 from auth.dependencies import get_current_user as get_current_user_dep
 from auth.utils import (
@@ -115,6 +117,12 @@ async def register(
         validate_password_strength(request_body.password)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+    if is_disposable_email(request_body.email):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Registration with disposable email addresses is not allowed.",
+        )
 
     existing = await db.execute(select(User).where(User.email == request_body.email))
     if existing.scalar_one_or_none() is not None:
@@ -229,6 +237,11 @@ async def google_auth(
             await db.flush()
         else:
             # 3. Create new user (Google-only, no password)
+            if is_disposable_email(email):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Registration with disposable email addresses is not allowed.",
+                )
             user = User(email=email, google_id=google_id)
             db.add(user)
             await db.flush()
@@ -548,6 +561,12 @@ async def update_email(
         )
 
     new_email = str(request_body.new_email).lower()
+
+    if is_disposable_email(new_email):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Disposable email addresses are not allowed.",
+        )
 
     if new_email == current_user.email.lower():
         raise HTTPException(
