@@ -186,6 +186,7 @@ export interface AiSuggestionRequest {
 export interface AiSuggestionResponse {
   suggestion: string;
   reasoning: string;
+  suggestion_type?: string;
 }
 
 export interface CheckoutSessionResponse {

@@ -66,6 +66,8 @@ export async function getInternalLinkSuggestions(
         targetUrl: match.target_url,
         anchorText: match.target_title,
         reason: aiResult.value.reasoning,
+        suggestionType: aiResult.value.suggestion_type === 'new_text' ? 'new_text' : 'existing_text',
+        similarity: match.similarity,
       });
     } else {
       // Fallback: use the matched text window directly
@@ -74,6 +76,8 @@ export async function getInternalLinkSuggestions(
         targetUrl: match.target_url,
         anchorText: match.target_title,
         reason: `Semantic match (${Math.round(match.similarity * 100)}% relevance)`,
+        suggestionType: 'existing_text',
+        similarity: match.similarity,
       });
     }
   }

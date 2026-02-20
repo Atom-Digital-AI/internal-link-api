@@ -104,6 +104,8 @@ export interface LinkSuggestion {
   targetUrl: string;
   anchorText: string;
   reason: string;
+  suggestionType?: 'existing_text' | 'new_text';
+  similarity?: number;
 }
 
 // Text highlighting types for the contextual editor
