@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
 import MarketingNav from '../components/MarketingNav'
 import MarketingFooter from '../components/MarketingFooter'
-import { fetchBlogPosts, type BlogPostSummary } from '../services/api'
+import { getCmsBlogPosts, type CmsBlogPostSummary } from '../services/cms'
 
 function formatDate(iso: string | null): string {
   if (!iso) return ''
@@ -13,12 +13,12 @@ function formatDate(iso: string | null): string {
 }
 
 export default function BlogList() {
-  const [posts, setPosts] = useState<BlogPostSummary[]>([])
+  const [posts, setPosts] = useState<CmsBlogPostSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    fetchBlogPosts()
+    getCmsBlogPosts()
       .then(setPosts)
       .catch(() => setError('Failed to load posts.'))
       .finally(() => setLoading(false))
@@ -83,17 +83,17 @@ export default function BlogList() {
                 onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.1)')}
                 onMouseLeave={e => (e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)')}
               >
-                {post.cover_image && (
+                {post.coverImage?.url && (
                   <img
-                    src={post.cover_image}
+                    src={post.coverImage.url}
                     alt={post.title}
                     style={{ width: '200px', objectFit: 'cover', flexShrink: 0 }}
                   />
                 )}
                 <div style={{ padding: '28px 32px' }}>
-                  {post.published_at && (
+                  {post.publishedAt && (
                     <p style={{ fontSize: '0.8125rem', color: '#6E6E73', margin: '0 0 8px' }}>
-                      {formatDate(post.published_at)}
+                      {formatDate(post.publishedAt)}
                     </p>
                   )}
                   <h2 style={{
