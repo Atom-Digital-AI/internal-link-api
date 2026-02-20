@@ -3,6 +3,8 @@ import logging
 import os
 from datetime import datetime, timezone
 
+import sentry_sdk
+
 import stripe
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
@@ -168,6 +170,7 @@ async def cancel_subscription(
         )
     except Exception as e:
         logger.error("Stripe cancel error for user %s: %s", current_user.id, e)
+        sentry_sdk.capture_exception(e)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Failed to cancel subscription: {str(e)}",
@@ -230,6 +233,7 @@ async def upgrade_to_pro(
         )
     except Exception as e:
         logger.error("Stripe upgrade error for user %s: %s", current_user.id, e)
+        sentry_sdk.capture_exception(e)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Failed to upgrade subscription: {str(e)}",
@@ -315,6 +319,7 @@ async def _handle_checkout_completed(data: dict, db: AsyncSession) -> None:
                 current_period_end = datetime.fromtimestamp(ts, tz=timezone.utc)
         except Exception as e:
             logger.warning("Could not retrieve subscription %s: %s", stripe_subscription_id, e)
+            sentry_sdk.capture_exception(e)
 
     # Upsert subscription
     sub_result = await db.execute(
@@ -350,6 +355,7 @@ async def _handle_checkout_completed(data: dict, db: AsyncSession) -> None:
         send_subscription_confirmation_email(user.email, new_plan, renewal_str)
     except Exception as e:
         logger.error("Failed to send subscription confirmation email: %s", e)
+        sentry_sdk.capture_exception(e)
 
 
 async def _handle_subscription_updated(data: dict, db: AsyncSession) -> None:
@@ -420,6 +426,7 @@ async def _handle_subscription_deleted(data: dict, db: AsyncSession) -> None:
             send_cancellation_email(user.email, access_until_str)
         except Exception as e:
             logger.error("Failed to send cancellation email: %s", e)
+            sentry_sdk.capture_exception(e)
 
 
 async def _handle_payment_failed(data: dict, db: AsyncSession) -> None:

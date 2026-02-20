@@ -4,6 +4,8 @@ import os
 from calendar import monthrange
 from datetime import datetime, timezone
 
+import sentry_sdk
+
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from google import genai
 from google.genai import types
@@ -134,6 +136,7 @@ Respond in this exact JSON format:
         reasoning = parsed.get("reasoning", "")
     except Exception as e:
         logger.error("AI service error for user %s: %s", current_user.id, e)
+        sentry_sdk.capture_exception(e)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"AI service error: {str(e)}",

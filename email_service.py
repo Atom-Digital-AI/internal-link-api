@@ -5,6 +5,7 @@ All functions log errors but do not raise - email failures must not break the ma
 import logging
 import os
 
+import sentry_sdk
 import sib_api_v3_sdk
 from sib_api_v3_sdk.rest import ApiException
 
@@ -35,8 +36,10 @@ def _send_email(to_email: str, subject: str, html_content: str) -> None:
         api.send_transac_email(send_smtp_email)
     except ApiException as e:
         logger.error("Brevo API error sending email to %s: %s", to_email, e)
+        sentry_sdk.capture_exception(e)
     except Exception as e:
         logger.error("Unexpected error sending email to %s: %s", to_email, e)
+        sentry_sdk.capture_exception(e)
 
 
 def send_welcome_email(to_email: str) -> None:
