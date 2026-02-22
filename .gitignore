@@ -46,6 +46,11 @@ feature_ideas.md
 competitor-analysis.*
 docs/plans/
 
+# Node / Playwright
+node_modules/
+playwright-report/
+test-results/
+
 # Tooling
 .claude/
 .playwright-mcp/
