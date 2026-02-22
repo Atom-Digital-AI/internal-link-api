@@ -103,6 +103,17 @@ def send_password_reset_email(to_email: str, reset_token: str) -> None:
 
 def send_subscription_confirmation_email(to_email: str, plan: str, renewal_date: str) -> None:
     """Send a subscription confirmation email after a successful upgrade."""
+    plan_features = {
+        "starter": {
+            "url_limit": "50",
+            "ai_calls": "30",
+        },
+        "pro": {
+            "url_limit": "500",
+            "ai_calls": "200",
+        },
+    }
+    features = plan_features.get(plan, plan_features["pro"])
     subject = f"You're now on the {plan.title()} plan!"
     html_content = f"""
     <html>
@@ -110,8 +121,8 @@ def send_subscription_confirmation_email(to_email: str, plan: str, renewal_date:
         <h1>Subscription Confirmed!</h1>
         <p>Your subscription to the <strong>{plan.title()}</strong> plan is now active.</p>
         <ul>
-          <li>Up to 500 URLs per scan</li>
-          <li>AI-powered link suggestions (200 calls/month)</li>
+          <li>Up to {features['url_limit']} URLs per scan</li>
+          <li>AI-powered link suggestions ({features['ai_calls']} calls/month)</li>
           <li>Unlimited saved sessions</li>
         </ul>
         <p>Your next renewal date is <strong>{renewal_date}</strong>.</p>

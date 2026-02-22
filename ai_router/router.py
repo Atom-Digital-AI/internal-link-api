@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/ai", tags=["ai"])
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-GEMINI_MODEL = os.environ["GEMINI_MODEL"]
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
 AI_MONTHLY_LIMITS = {"starter": 30, "pro": 200}
 
 
@@ -147,7 +147,7 @@ Respond in this exact JSON format:
         sentry_sdk.capture_exception(e)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"AI service error: {str(e)}",
+            detail="AI service is temporarily unavailable. Please try again.",
         )
 
     # Increment usage counter
