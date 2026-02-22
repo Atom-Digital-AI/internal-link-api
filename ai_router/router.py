@@ -4,6 +4,8 @@ import os
 from calendar import monthrange
 from datetime import datetime, timezone
 
+import sentry_sdk
+
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from google import genai
 from google.genai import types
@@ -40,6 +42,7 @@ class AiSuggestRequest(BaseModel):
 class AiSuggestResponse(BaseModel):
     suggestion: str
     reasoning: str
+    suggestion_type: str = "existing_text"  # "existing_text" or "new_text"
 
 
 # ---------------------------------------------------------------------------
@@ -99,22 +102,28 @@ async def ai_suggest(
 
     # Build prompt
     keywords_str = ", ".join(request_body.target_keywords) if request_body.target_keywords else "none"
-    prompt = f"""You are an SEO expert helping to find internal linking opportunities.
+    prompt = f"""You are an SEO expert finding internal linking opportunities.
 
 Source page URL: {request_body.source_url}
-Source page content (excerpt):
+
+Relevant content section from the source page:
+---
 {request_body.source_content[:2000]}
+---
 
-Target page URL: {request_body.target_url}
-Target page title: {request_body.target_title}
-Target page keywords: {keywords_str}
+Target page to link to: {request_body.target_url}
+Target page topic: {request_body.target_title}
 
-Analyze the source content and suggest:
-1. The best anchor text to use for a link from the source page to the target page
-2. Brief reasoning for why this internal link would benefit SEO and users
+Analyze the content section above and respond with ONE of these two approaches:
+
+APPROACH A - If the content already contains words/phrases that naturally relate to the target page:
+Identify the best existing phrase to use as anchor text for a link to the target page.
+
+APPROACH B - If the content is thematically related but doesn't contain a natural anchor phrase:
+Suggest a short sentence or phrase that could be naturally inserted into the content to create a link opportunity.
 
 Respond in this exact JSON format:
-{{"suggestion": "anchor text here", "reasoning": "your reasoning here"}}"""
+{{"suggestion": "the anchor text or suggested new text", "reasoning": "why this link benefits SEO and readers", "type": "existing_text" or "new_text"}}"""
 
     try:
         client = genai.Client(api_key=GEMINI_API_KEY)
@@ -132,8 +141,10 @@ Respond in this exact JSON format:
         parsed = json.loads(raw_text)
         suggestion = parsed.get("suggestion", "")
         reasoning = parsed.get("reasoning", "")
+        suggestion_type = parsed.get("type", "existing_text")
     except Exception as e:
         logger.error("AI service error for user %s: %s", current_user.id, e)
+        sentry_sdk.capture_exception(e)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"AI service error: {str(e)}",
@@ -146,4 +157,4 @@ Respond in this exact JSON format:
     remaining = max(0, monthly_limit - ai_usage.call_count)
     response.headers["X-AI-Calls-Remaining"] = str(remaining)
 
-    return AiSuggestResponse(suggestion=suggestion, reasoning=reasoning)
+    return AiSuggestResponse(suggestion=suggestion, reasoning=reasoning, suggestion_type=suggestion_type)

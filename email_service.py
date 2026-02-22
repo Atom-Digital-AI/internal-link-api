@@ -5,6 +5,7 @@ All functions log errors but do not raise - email failures must not break the ma
 import logging
 import os
 
+import sentry_sdk
 import sib_api_v3_sdk
 from sib_api_v3_sdk.rest import ApiException
 
@@ -35,8 +36,10 @@ def _send_email(to_email: str, subject: str, html_content: str) -> None:
         api.send_transac_email(send_smtp_email)
     except ApiException as e:
         logger.error("Brevo API error sending email to %s: %s", to_email, e)
+        sentry_sdk.capture_exception(e)
     except Exception as e:
         logger.error("Unexpected error sending email to %s: %s", to_email, e)
+        sentry_sdk.capture_exception(e)
 
 
 def send_welcome_email(to_email: str) -> None:
@@ -51,6 +54,26 @@ def send_welcome_email(to_email: str) -> None:
         <p><a href="{FRONTEND_URL}" style="background:#2563eb;color:white;padding:12px 24px;
         border-radius:6px;text-decoration:none;">Get Started</a></p>
         <p>Upgrade to Pro for AI-powered suggestions, 500 URL scans, and saved sessions.</p>
+        <p>The Internal Link Finder Team</p>
+      </body>
+    </html>
+    """
+    _send_email(to_email, subject, html_content)
+
+
+def send_verification_email(to_email: str, token: str) -> None:
+    """Send an email verification link to a newly registered user."""
+    verify_url = f"{FRONTEND_URL}/verify-email?token={token}"
+    subject = "Verify your email address"
+    html_content = f"""
+    <html>
+      <body>
+        <h1>Verify your email address</h1>
+        <p>Thanks for signing up for Internal Link Finder! Please verify your email
+        address by clicking the link below. This link expires in 24 hours.</p>
+        <p><a href="{verify_url}" style="background:#2563eb;color:white;padding:12px 24px;
+        border-radius:6px;text-decoration:none;">Verify Email</a></p>
+        <p>If you did not create an account, you can safely ignore this email.</p>
         <p>The Internal Link Finder Team</p>
       </body>
     </html>

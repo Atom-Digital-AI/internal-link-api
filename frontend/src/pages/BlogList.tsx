@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Helmet } from 'react-helmet-async'
 import MarketingNav from '../components/MarketingNav'
 import MarketingFooter from '../components/MarketingFooter'
-import { fetchBlogPosts, type BlogPostSummary } from '../services/api'
+import { getCmsBlogPosts, type CmsBlogPostSummary } from '../services/cms'
 
 function formatDate(iso: string | null): string {
   if (!iso) return ''
@@ -12,12 +13,12 @@ function formatDate(iso: string | null): string {
 }
 
 export default function BlogList() {
-  const [posts, setPosts] = useState<BlogPostSummary[]>([])
+  const [posts, setPosts] = useState<CmsBlogPostSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    fetchBlogPosts()
+    getCmsBlogPosts()
       .then(setPosts)
       .catch(() => setError('Failed to load posts.'))
       .finally(() => setLoading(false))
@@ -25,6 +26,19 @@ export default function BlogList() {
 
   return (
     <div style={{ fontFamily: 'var(--font-sans)', background: '#F5F5F7', minHeight: '100vh' }}>
+      <Helmet>
+        <title>Blog — Linki</title>
+        <meta name="description" content="Tips, guides, and articles on internal linking strategy, SEO best practices, and how to improve your site structure with Linki." />
+        <link rel="canonical" href="https://getlinki.app/blog" />
+        <meta property="og:title" content="Blog — Linki" />
+        <meta property="og:description" content="Tips, guides, and articles on internal linking strategy, SEO best practices, and how to improve your site structure with Linki." />
+        <meta property="og:url" content="https://getlinki.app/blog" />
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="Linki" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Blog — Linki" />
+        <meta name="twitter:description" content="Tips, guides, and articles on internal linking strategy, SEO best practices, and how to improve your site structure with Linki." />
+      </Helmet>
       <MarketingNav />
 
       <main style={{ maxWidth: '900px', margin: '0 auto', padding: '120px 40px 80px' }}>
@@ -69,17 +83,17 @@ export default function BlogList() {
                 onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.1)')}
                 onMouseLeave={e => (e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)')}
               >
-                {post.cover_image && (
+                {post.coverImage?.url && (
                   <img
-                    src={post.cover_image}
-                    alt=""
+                    src={post.coverImage.url}
+                    alt={post.title}
                     style={{ width: '200px', objectFit: 'cover', flexShrink: 0 }}
                   />
                 )}
                 <div style={{ padding: '28px 32px' }}>
-                  {post.published_at && (
+                  {post.publishedAt && (
                     <p style={{ fontSize: '0.8125rem', color: '#6E6E73', margin: '0 0 8px' }}>
-                      {formatDate(post.published_at)}
+                      {formatDate(post.publishedAt)}
                     </p>
                   )}
                   <h2 style={{

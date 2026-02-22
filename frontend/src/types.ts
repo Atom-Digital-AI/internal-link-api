@@ -80,11 +80,32 @@ export interface ConfigResponse {
   max_bulk_urls: number;
 }
 
+// Embedding-based link matching
+export interface MatchTarget {
+  url: string;
+  title: string;
+}
+
+export interface LinkMatch {
+  target_url: string;
+  target_title: string;
+  similarity: number;
+  matched_text: string;
+  start_idx: number;
+  end_idx: number;
+}
+
+export interface MatchLinksResponse {
+  matches: LinkMatch[];
+}
+
 export interface LinkSuggestion {
   sentence: string;
   targetUrl: string;
   anchorText: string;
   reason: string;
+  suggestionType?: 'existing_text' | 'new_text';
+  similarity?: number;
 }
 
 // Text highlighting types for the contextual editor

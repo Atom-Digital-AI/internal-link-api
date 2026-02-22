@@ -3,6 +3,15 @@ import os
 from datetime import datetime, timezone
 from pathlib import Path
 
+import sentry_sdk
+
+sentry_sdk.init(
+    dsn=os.environ.get("SENTRY_DSN", ""),
+    environment=os.environ.get("SENTRY_ENVIRONMENT", "production"),
+    traces_sample_rate=float(os.environ.get("SENTRY_TRACES_SAMPLE_RATE", "0.1")),
+    send_default_pii=False,
+)
+
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, Response
@@ -19,6 +28,7 @@ from auth.dependencies import get_current_user
 from database import get_db
 from db_models import BlogPost, User
 
+from embeddings import find_link_opportunities
 from models import (
     AnalyzeRequest,
     AnalyzeResponse,
@@ -28,11 +38,14 @@ from models import (
     ConfigResponse,
     FetchTargetRequest,
     HealthResponse,
+    LinkMatch,
+    MatchLinksRequest,
+    MatchLinksResponse,
     SitemapRequest,
     SitemapResponse,
     TargetPageInfo,
 )
-from scraper import analyze_page, analyze_page_summary, fetch_target_page_content
+from scraper import analyze_page, analyze_page_summary, calculate_keyword_relevance, fetch_target_page_content
 from sitemap_parser import fetch_sitemap
 
 # New SaaS routers
@@ -176,6 +189,37 @@ async def fetch_target(request: Request, body: FetchTargetRequest):
     return await fetch_target_page_content(str(body.url))
 
 
+@limiter.limit("20/minute")
+@app.post("/match-links", response_model=MatchLinksResponse)
+async def match_links(request: Request, body: MatchLinksRequest):
+    """
+    Find internal link opportunities using semantic embedding matching.
+    Optionally pre-filters targets by keyword relevance before running embeddings.
+    """
+    targets_as_dicts = [{"url": t.url, "title": t.title} for t in body.targets]
+
+    # Pre-filter: if more targets than max_targets, use keyword relevance to narrow down
+    if len(targets_as_dicts) > body.max_targets:
+        scored = []
+        for t in targets_as_dicts:
+            keywords = t["title"].lower().split()
+            if body.filter_keyword:
+                keywords.append(body.filter_keyword.lower())
+            score = calculate_keyword_relevance(body.source_content, keywords)
+            scored.append((score, t))
+        scored.sort(key=lambda x: x[0], reverse=True)
+        targets_as_dicts = [t for _, t in scored[: body.max_targets]]
+
+    matches = find_link_opportunities(
+        source_content=body.source_content,
+        targets=targets_as_dicts,
+        threshold=body.threshold,
+    )
+    return MatchLinksResponse(
+        matches=[LinkMatch(**m) for m in matches]
+    )
+
+
 @limiter.limit("10/minute")
 @app.post("/bulk-analyze", response_model=BulkAnalyzeResponse)
 async def bulk_analyze(request: Request, body: BulkAnalyzeRequest):
@@ -286,7 +330,7 @@ def _url_entry(base: str, loc: str, lastmod: str | None = None,
 
 @app.get("/sitemap.xml", include_in_schema=False)
 async def sitemap(db: AsyncSession = Depends(get_db)) -> Response:
-    base_url = os.environ.get("SITE_URL", "https://linki.tools").rstrip("/")
+    base_url = os.environ.get("SITE_URL", "https://getlinki.app").rstrip("/")
     today = datetime.now(timezone.utc).date().isoformat()
 
     entries: list[str] = []

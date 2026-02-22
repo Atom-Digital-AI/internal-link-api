@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link, Navigate } from 'react-router-dom'
-import DOMPurify from 'dompurify'
+import { Helmet } from 'react-helmet-async'
 import MarketingNav from '../components/MarketingNav'
 import MarketingFooter from '../components/MarketingFooter'
-import { fetchBlogPost, type BlogPostDetail } from '../services/api'
+import { getCmsBlogPost, type CmsBlogPostDetail } from '../services/cms'
+import { RichText } from '@payloadcms/richtext-lexical/react'
 
 function formatDate(iso: string | null): string {
   if (!iso) return ''
@@ -14,14 +15,17 @@ function formatDate(iso: string | null): string {
 
 export default function BlogPost() {
   const { slug } = useParams<{ slug: string }>()
-  const [post, setPost] = useState<BlogPostDetail | null>(null)
+  const [post, setPost] = useState<CmsBlogPostDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
 
   useEffect(() => {
     if (!slug) return
-    fetchBlogPost(slug)
-      .then(setPost)
+    getCmsBlogPost(slug)
+      .then((result) => {
+        if (!result) setNotFound(true)
+        else setPost(result)
+      })
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false))
   }, [slug])
@@ -46,9 +50,37 @@ export default function BlogPost() {
 
         {post && (
           <>
-            {post.published_at && (
+            <Helmet>
+              <title>{`${post.title} — Linki`}</title>
+              <meta name="description" content={post.excerpt || `Read "${post.title}" on the Linki blog.`} />
+              <link rel="canonical" href={`https://getlinki.app/blog/${post.slug}`} />
+              <meta property="og:title" content={`${post.title} — Linki`} />
+              <meta property="og:description" content={post.excerpt || `Read "${post.title}" on the Linki blog.`} />
+              <meta property="og:url" content={`https://getlinki.app/blog/${post.slug}`} />
+              <meta property="og:type" content="article" />
+              <meta property="og:site_name" content="Linki" />
+              {post.coverImage?.url && <meta property="og:image" content={post.coverImage?.url} />}
+              <meta name="twitter:card" content="summary_large_image" />
+              <meta name="twitter:title" content={`${post.title} — Linki`} />
+              <meta name="twitter:description" content={post.excerpt || `Read "${post.title}" on the Linki blog.`} />
+              <script type="application/ld+json">{JSON.stringify({
+                '@context': 'https://schema.org',
+                '@type': 'BlogPosting',
+                headline: post.title,
+                ...(post.excerpt ? { description: post.excerpt } : {}),
+                ...(post.publishedAt ? { datePublished: post.publishedAt } : {}),
+                ...(post.coverImage?.url ? { image: post.coverImage?.url } : {}),
+                url: `https://getlinki.app/blog/${post.slug}`,
+                author: {
+                  '@type': 'Organization',
+                  name: 'Linki',
+                  url: 'https://getlinki.app',
+                },
+              })}</script>
+            </Helmet>
+            {post.publishedAt && (
               <p style={{ fontSize: '0.875rem', color: '#6E6E73', margin: '0 0 12px' }}>
-                {formatDate(post.published_at)}
+                {formatDate(post.publishedAt)}
               </p>
             )}
 
@@ -63,10 +95,10 @@ export default function BlogPost() {
               {post.title}
             </h1>
 
-            {post.cover_image && (
+            {post.coverImage?.url && (
               <img
-                src={post.cover_image}
-                alt=""
+                src={post.coverImage?.url}
+                alt={post.title}
                 style={{
                   width: '100%',
                   borderRadius: '16px',
@@ -78,15 +110,10 @@ export default function BlogPost() {
               />
             )}
 
-            <div
-              className="blog-content"
-              dangerouslySetInnerHTML={{
-                __html: DOMPurify.sanitize(post.html_content, {
-                  ADD_TAGS: ['iframe'],
-                  ADD_ATTR: ['target', 'rel', 'frameborder', 'allowfullscreen', 'allow', 'loading'],
-                })
-              }}
-            />
+            <div className="blog-content">
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+              <RichText data={post.body as any} />
+            </div>
           </>
         )}
       </main>

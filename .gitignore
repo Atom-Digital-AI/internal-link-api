@@ -46,6 +46,11 @@ feature_ideas.md
 competitor-analysis.*
 docs/plans/
 
+# Node / Playwright
+node_modules/
+playwright-report/
+test-results/
+
 # Tooling
 .claude/
 .playwright-mcp/
@@ -62,3 +67,4 @@ gtm_tag_manager_summary_2026-02-19.md
 gtm.md
 # Environment variables
 .env
+cms/.env

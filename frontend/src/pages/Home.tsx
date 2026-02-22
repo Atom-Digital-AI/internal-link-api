@@ -1,47 +1,24 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Helmet } from 'react-helmet-async'
 import MarketingNav from '../components/MarketingNav'
 import MarketingFooter from '../components/MarketingFooter'
+import { getGlobal } from '../services/cms'
 
-const features = [
-  {
-    icon: '🕷️',
-    title: 'Crawl & Analyse',
-    desc: 'Scan up to 500 pages, extract all existing links and discover opportunities',
-  },
-  {
-    icon: '✨',
-    title: 'AI Suggestions',
-    desc: 'AI-powered suggestions tell you exactly which words to link and where to point them',
-  },
-  {
-    icon: '🔖',
-    title: 'Save Sessions',
-    desc: 'Pro users can save analysis sessions to revisit and continue later',
-  },
-  {
-    icon: '⬇️',
-    title: 'Export Results',
-    desc: 'Download your link opportunities as CSV for use in any workflow',
-  },
-]
-
-const steps = [
-  {
-    num: '1',
-    title: 'Enter your domain',
-    desc: 'Type in your website URL and let Linki crawl your pages',
-  },
-  {
-    num: '2',
-    title: 'Select pages to analyse',
-    desc: 'Choose which pages you want to find linking opportunities for',
-  },
-  {
-    num: '3',
-    title: 'Get AI suggestions',
-    desc: 'Receive precise anchor text and target page recommendations',
-  },
-]
+interface HomeData {
+  heroHeading: string
+  heroSubtext: string
+  featuresHeading: string
+  features: { icon: string; title: string; desc: string }[]
+  stepsHeading: string
+  steps: { num: string; title: string; desc: string }[]
+  pricingHeading: string
+  pricingSubtext: string
+  ctaHeading: string
+  ctaSubtext: string
+  metaTitle: string
+  metaDescription: string
+}
 
 const pricingFeatures = [
   { freeLabel: '10 URLs per scan',     proLabel: '500 URLs per scan',          free: true  },
@@ -51,9 +28,63 @@ const pricingFeatures = [
   { freeLabel: 'Priority support',     proLabel: 'Priority support',           free: false },
 ]
 
+const softwareApplicationSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  name: 'Linki',
+  applicationCategory: 'BusinessApplication',
+  operatingSystem: 'Web',
+  url: 'https://getlinki.app',
+  description: 'AI-powered internal linking tool that finds pages needing links and suggests exactly where to add them.',
+  offers: [
+    {
+      '@type': 'Offer',
+      name: 'Free',
+      price: '0',
+      priceCurrency: 'GBP',
+    },
+    {
+      '@type': 'Offer',
+      name: 'Starter',
+      price: '4.99',
+      priceCurrency: 'GBP',
+      billingIncrement: 'P1M',
+    },
+    {
+      '@type': 'Offer',
+      name: 'Pro',
+      price: '14.99',
+      priceCurrency: 'GBP',
+      billingIncrement: 'P1M',
+    },
+  ],
+}
+
 export default function Home() {
+  const [content, setContent] = useState<HomeData | null>(null)
+
+  useEffect(() => {
+    getGlobal<HomeData>('page-home').then(setContent).catch(console.error)
+  }, [])
+
+  if (!content) return null
+
   return (
     <div style={{ fontFamily: 'var(--font-sans)', background: '#F5F5F7' }}>
+      <Helmet>
+        <title>{content.metaTitle}</title>
+        <meta name="description" content={content.metaDescription} />
+        <link rel="canonical" href="https://getlinki.app/" />
+        <meta property="og:title" content={content.metaTitle} />
+        <meta property="og:description" content={content.metaDescription} />
+        <meta property="og:url" content="https://getlinki.app/" />
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="Linki" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={content.metaTitle} />
+        <meta name="twitter:description" content={content.metaDescription} />
+        <script type="application/ld+json">{JSON.stringify(softwareApplicationSchema)}</script>
+      </Helmet>
       <MarketingNav />
 
       {/* Hero */}
@@ -80,7 +111,7 @@ export default function Home() {
             lineHeight: 1.1,
           }}
         >
-          Internal linking made intelligent
+          {content.heroHeading}
         </h1>
         <p
           style={{
@@ -91,7 +122,7 @@ export default function Home() {
             lineHeight: 1.6,
           }}
         >
-          Linki finds pages that need internal links and uses AI to suggest exactly where to add them.
+          {content.heroSubtext}
         </p>
         <div
           style={{
@@ -144,7 +175,7 @@ export default function Home() {
             marginBottom: '48px',
           }}
         >
-          Everything you need for smarter internal linking
+          {content.featuresHeading}
         </h2>
         <div
           style={{
@@ -155,7 +186,7 @@ export default function Home() {
             margin: '0 auto',
           }}
         >
-          {features.map((f) => (
+          {content.features.map((f) => (
             <div
               key={f.title}
               style={{
@@ -218,7 +249,7 @@ export default function Home() {
             marginBottom: '48px',
           }}
         >
-          How it works
+          {content.stepsHeading}
         </h2>
         <div
           style={{
@@ -230,7 +261,7 @@ export default function Home() {
             margin: '0 auto',
           }}
         >
-          {steps.map((s) => (
+          {content.steps.map((s) => (
             <div
               key={s.num}
               style={{
@@ -298,7 +329,7 @@ export default function Home() {
             margin: '0 0 12px',
           }}
         >
-          Simple, transparent pricing
+          {content.pricingHeading}
         </h2>
         <p
           style={{
@@ -307,7 +338,7 @@ export default function Home() {
             fontSize: '1.0625rem',
           }}
         >
-          Start free, upgrade when you're ready
+          {content.pricingSubtext}
         </p>
         <div
           style={{
@@ -512,7 +543,7 @@ export default function Home() {
             margin: '0 0 16px',
           }}
         >
-          Ready to improve your internal linking?
+          {content.ctaHeading}
         </h2>
         <p
           style={{
@@ -521,7 +552,7 @@ export default function Home() {
             margin: '0 0 32px',
           }}
         >
-          Join hundreds of SEOs using Linki to build smarter site structure.
+          {content.ctaSubtext}
         </p>
         <Link
           to="/register"

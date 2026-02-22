@@ -22,16 +22,17 @@ export const competitors: CompetitorData[] = [
   {
     slug: 'link-whisper',
     name: 'Link Whisper',
-    tagline: 'The internal linking tool that works on every website',
+    tagline: 'AI link suggestions for any website — no install needed',
     heroSubhead:
-      'Link Whisper is a WordPress-only plugin — if your site runs on anything else, you\'re out of luck. Linki works on any website, requires zero installation, and gets you up and running in seconds.',
+      'Link Whisper is a WordPress-only plugin — if your site runs on anything else, you\'re out of luck. Linki analyses any website from the outside, with no plugin or CMS access needed. You get AI-powered link suggestions, then implement them in your own workflow.',
     verdict:
-      'Link Whisper is a solid choice if you\'re on WordPress and comfortable with plugins. But if you\'re on Webflow, Shopify, a custom CMS, or just don\'t want to install yet another plugin, Linki gives you the same AI-powered internal linking without the platform lock-in — and with a free tier to get started.',
+      'Link Whisper is a solid choice if you\'re on WordPress and want links inserted directly from the editor. But if you\'re on Webflow, Shopify, a custom CMS, or managing multiple client sites across different platforms, Linki lets you analyse any website without needing admin access or a plugin install. You get AI-powered suggestions and export them to implement however suits your workflow — with a free tier to get started.',
     tableRows: [
-      { feature: 'Platform support',         linki: 'Any website',      competitor: 'WordPress only' },
+      { feature: 'Analyses any website',       linki: true,               competitor: 'WordPress only' },
       { feature: 'Install required',          linki: false,              competitor: true },
+      { feature: 'CMS access needed',         linki: false,              competitor: true },
+      { feature: 'In-editor link insertion',  linki: false,              competitor: true },
       { feature: 'AI suggestions',            linki: true,               competitor: true },
-      { feature: 'One-click implementation',  linki: true,               competitor: true },
       { feature: 'Session saving',            linki: true,               competitor: false },
       { feature: 'CSV export',                linki: true,               competitor: false },
       { feature: 'Free tier',                 linki: true,               competitor: false },
@@ -40,8 +41,8 @@ export const competitors: CompetitorData[] = [
     whyLinki: [
       {
         icon: '🌐',
-        title: 'Works on any platform',
-        body: 'Webflow, Shopify, Ghost, custom-built — if it has pages, Linki can analyse it. No WordPress dependency, no plugin approval process, no compatibility worries.',
+        title: 'Analyse any website',
+        body: 'Webflow, Shopify, Ghost, custom-built — if it has pages, Linki can crawl and analyse it from the outside. No WordPress dependency, no plugin install, no CMS admin access required. Ideal if you\'re an agency or consultant auditing sites across different platforms.',
       },
       {
         icon: '⚡',
@@ -65,14 +66,14 @@ export const competitors: CompetitorData[] = [
       'Orphaned page detection built into the dashboard',
     ],
     bottomLine:
-      'If you run a WordPress site and want links inserted directly from your editor without leaving the CMS, Link Whisper is well-suited for that workflow. It\'s a mature plugin with a loyal user base for good reason.\n\nBut if you\'re not on WordPress — or you simply don\'t want the overhead of a plugin install — Linki gives you AI-powered internal link suggestions for any website, completely in the browser. The free tier lets you start without a credit card, and the flat monthly pricing means no surprises as your site grows.\n\nChoose Linki if you value platform flexibility and a clean, no-install experience. Choose Link Whisper if you\'re all-in on WordPress and want deep CMS integration.',
+      'If you run a WordPress site and want links inserted directly from your editor without leaving the CMS, Link Whisper is well-suited for that workflow. It\'s a mature plugin with a loyal user base for good reason.\n\nLinki takes a different approach: it analyses your site from the outside and gives you AI-powered link suggestions that you then implement yourself. That means it works on any platform — WordPress, Webflow, Shopify, custom builds — but it won\'t insert links into your CMS for you. The trade-off is flexibility: you can analyse any website without needing admin access or installing anything, which makes it particularly useful for agencies and consultants managing sites across different platforms.\n\nChoose Linki if you work across multiple platforms or want to audit sites without needing CMS access. Choose Link Whisper if you\'re all-in on WordPress and want direct in-editor link insertion.',
   },
   {
     slug: 'linkstorm',
     name: 'LinkStorm',
     tagline: 'Simpler internal linking without the JavaScript snippet',
     heroSubhead:
-      'LinkStorm requires a JavaScript snippet on every page of your site and has no free tier. Linki requires nothing installed, starts completely free, and works on any website out of the box.',
+      'LinkStorm requires a JavaScript snippet on every page of your site and has no free tier. Linki analyses your site from the outside — nothing to install, no site access needed — and starts completely free.',
     verdict:
       'LinkStorm is a capable tool for teams who want a persistent tracking layer on their site. But it requires ongoing technical setup and charges from day one. Linki is faster to start, works without touching your site\'s code, and lets you try AI-powered suggestions before paying anything.',
     tableRows: [
@@ -89,7 +90,7 @@ export const competitors: CompetitorData[] = [
       {
         icon: '🚫',
         title: 'No snippet to install',
-        body: 'Linki crawls your site directly — there\'s nothing to add to your `<head>` tag, no third-party JavaScript running on your pages, and no developer required to get started.',
+        body: 'Linki crawls your site from the outside — there\'s nothing to add to your `<head>` tag, no third-party JavaScript on your pages, and no developer or CMS access required. That also means you can analyse client sites or competitor sites without needing to touch their code.',
       },
       {
         icon: '🆓',
@@ -113,7 +114,7 @@ export const competitors: CompetitorData[] = [
       'Visual link map showing the full internal link graph',
     ],
     bottomLine:
-      'LinkStorm suits teams who want their internal linking tool tightly integrated with Google Search Console data and who need to manage links across multiple domains from one dashboard. The visual link map is a genuine differentiator for larger sites.\n\nLinki takes a simpler approach: no snippet, no GSC connection required, just paste your URL and get AI suggestions instantly. It\'s the better fit if you want to act fast, keep setup minimal, and not commit budget before you\'ve seen the value.\n\nChoose Linki if you\'re starting out or value zero-friction setup. Choose LinkStorm if GSC integration and cross-domain linking are non-negotiables for your workflow.',
+      'LinkStorm suits teams who want their internal linking tool tightly integrated with Google Search Console data and who need to manage links across multiple domains from one dashboard. The visual link map is a genuine differentiator for larger sites.\n\nLinki takes a different approach: it analyses your site externally, so there\'s no snippet to maintain and no site access required. That makes it particularly useful for agencies or consultants who need to audit linking opportunities across multiple client sites without requesting backend access to each one. The trade-off is you don\'t get the persistent tracking or cross-domain linking that LinkStorm offers.\n\nChoose Linki if you want zero-friction setup, especially across multiple sites you don\'t control. Choose LinkStorm if GSC integration and cross-domain linking are non-negotiables for your workflow.',
   },
   {
     slug: 'inlinks',
@@ -137,7 +138,7 @@ export const competitors: CompetitorData[] = [
       {
         icon: '⚡',
         title: 'Start in 60 seconds',
-        body: 'No snippet to install, no onboarding call, no configuration wizard. Enter your URL and get AI link suggestions immediately — no prior knowledge of entity SEO required.',
+        body: 'No snippet to install, no onboarding call, no site access required. Enter any URL and get AI link suggestions immediately — whether it\'s your own site, a client\'s site, or a prospect you\'re pitching to.',
       },
       {
         icon: '💰',
@@ -161,18 +162,19 @@ export const competitors: CompetitorData[] = [
       'Continuous monitoring and automatic re-optimisation as content changes',
     ],
     bottomLine:
-      'InLinks is a serious enterprise tool for teams who have moved beyond basic internal linking into entity SEO, schema automation, and continuous content monitoring. If that\'s where you are, it\'s worth the investment and the learning curve.\n\nBut for the majority of SEOs — agency teams, in-house SEOs, site owners — the complexity and price of InLinks is unnecessary. Linki covers the internal linking use case thoroughly: AI-powered suggestions, session saving, CSV export, and support for any website, all at a price point that makes sense.\n\nChoose Linki if you want fast, practical internal linking without enterprise overhead. Choose InLinks if entity SEO and schema automation are central to your strategy.',
+      'InLinks is a serious enterprise tool for teams who have moved beyond basic internal linking into entity SEO, schema automation, and continuous content monitoring. If that\'s where you are, it\'s worth the investment and the learning curve.\n\nBut for the majority of SEOs — agency teams, in-house SEOs, site owners — the complexity and price of InLinks is unnecessary. Linki analyses any website externally and gives you actionable link suggestions without needing a snippet installed or CMS access granted. For agencies managing multiple client sites, that means you can audit linking opportunities across your entire portfolio without onboarding each site into an enterprise platform.\n\nChoose Linki if you want fast, practical internal linking you can run on any site without setup. Choose InLinks if entity SEO and schema automation are central to your strategy.',
   },
   {
     slug: 'linkboss',
     name: 'LinkBoss',
     tagline: 'Predictable pricing. No credits. No WordPress required.',
     heroSubhead:
-      'LinkBoss is WordPress-only and uses a credit-based pricing model that escalates fast as your site grows. Linki is platform-agnostic with flat monthly pricing — no credit burn, no surprises.',
+      'LinkBoss is WordPress-only and uses a credit-based pricing model that escalates fast as your site grows. Linki analyses any website from the outside — no plugin, no CMS access needed — with flat monthly pricing and no credit burn.',
     verdict:
-      'LinkBoss offers impressive AI features for WordPress users, including auto-generated linking paragraphs and topic cluster tools. But if you\'re not on WordPress, or if credit-based pricing makes budgeting unpredictable, Linki offers a simpler, flatter alternative that works everywhere.',
+      'LinkBoss offers impressive AI features for WordPress users, including auto-generated linking paragraphs and topic cluster tools. But if you\'re not on WordPress, or if credit-based pricing makes budgeting unpredictable, Linki can analyse any site from the outside and give you AI-powered suggestions without a plugin install.',
     tableRows: [
-      { feature: 'Platform support',         linki: 'Any website',     competitor: 'WordPress only' },
+      { feature: 'Analyses any website',       linki: true,              competitor: 'WordPress only' },
+      { feature: 'Install required',          linki: false,             competitor: true },
       { feature: 'Pricing model',             linki: 'Flat monthly',    competitor: 'Credit-based' },
       { feature: 'AI suggestions',            linki: true,              competitor: true },
       { feature: 'Auto-generates content',    linki: false,             competitor: true },
@@ -184,8 +186,8 @@ export const competitors: CompetitorData[] = [
     whyLinki: [
       {
         icon: '🌐',
-        title: 'Any platform, any CMS',
-        body: 'Linki works on Webflow, Shopify, Ghost, custom builds — anything with pages. You\'re not locked into WordPress, and you don\'t need a plugin installed.',
+        title: 'Analyse any website',
+        body: 'Linki crawls and analyses any website from the outside — Webflow, Shopify, Ghost, custom builds, or sites you don\'t even have admin access to. No plugin, no CMS login required. That makes it a natural fit for agencies and consultants working across multiple client platforms.',
       },
       {
         icon: '💳',
@@ -209,7 +211,7 @@ export const competitors: CompetitorData[] = [
       'Deep semantic analysis of content relationships within WordPress',
     ],
     bottomLine:
-      'LinkBoss is a feature-rich choice for WordPress power users who want AI to not just suggest links but also generate the surrounding content. If you\'re managing a large WordPress blog and want maximum automation, it\'s worth evaluating.\n\nBut LinkBoss\'s credit model means costs scale with usage in ways that are hard to predict, and the WordPress-only restriction rules it out for many modern sites. Linki is the better fit if you want consistent monthly pricing, platform flexibility, and a free tier to get started without commitment.\n\nChoose Linki if you\'re on a non-WordPress platform or want predictable, flat pricing. Choose LinkBoss if you\'re all-in on WordPress and want auto-generated linking content.',
+      'LinkBoss is a feature-rich choice for WordPress power users who want AI to not just suggest links but also generate the surrounding content. If you\'re managing a large WordPress blog and want maximum automation, it\'s worth evaluating.\n\nBut LinkBoss\'s credit model means costs scale with usage in ways that are hard to predict, and the WordPress-only restriction rules it out for many modern sites. Linki analyses any website from the outside — no plugin, no CMS access needed — which makes it a practical choice for agencies or anyone managing sites across different platforms. The trade-off is that Linki suggests links for you to implement rather than inserting them directly.\n\nChoose Linki if you work across multiple platforms or want predictable, flat pricing. Choose LinkBoss if you\'re all-in on WordPress and want auto-generated linking content with direct insertion.',
   },
   {
     slug: 'seojuice',
@@ -220,8 +222,9 @@ export const competitors: CompetitorData[] = [
     verdict:
       'SEOJuice suits teams who want broad SEO automation with minimal hands-on involvement. Linki is the better choice if you want to stay in control of your internal linking strategy, understand exactly why each link is suggested, and implement changes deliberately rather than automatically.',
     tableRows: [
-      { feature: 'Platform support',         linki: 'Any website',     competitor: 'Any website' },
+      { feature: 'Analyses any website',       linki: true,              competitor: true },
       { feature: 'Install required',          linki: false,             competitor: 'JS snippet required' },
+      { feature: 'CMS access needed',         linki: false,             competitor: true },
       { feature: 'User control',              linki: 'Full control',    competitor: 'Automated / limited control' },
       { feature: 'Internal linking focus',    linki: true,              competitor: false },
       { feature: 'AI suggestions',            linki: true,              competitor: true },
@@ -243,7 +246,7 @@ export const competitors: CompetitorData[] = [
       {
         icon: '🚫',
         title: 'No snippet on your site',
-        body: 'Linki crawls your pages directly. There\'s no JavaScript running on your site, no ongoing tracking, and no third-party code to maintain or worry about.',
+        body: 'Linki analyses your pages from the outside. There\'s no JavaScript running on your site, no CMS access needed, and no third-party code to maintain. You can analyse any website — your own, a client\'s, or a prospect\'s — without needing backend access.',
       },
       {
         icon: '📊',
@@ -257,7 +260,7 @@ export const competitors: CompetitorData[] = [
       'Fully automated, set-and-forget approach requiring minimal ongoing attention',
     ],
     bottomLine:
-      'SEOJuice is a good fit for agencies or site owners who want a wide-ranging SEO automation layer running quietly in the background. The white-label capability makes it appealing for agencies who want to deliver SEO services without ongoing manual effort.\n\nLinki is intentionally different: it gives you focused internal link suggestions that you review and implement yourself. That means more control, more transparency, and a clearer picture of what\'s changing on your site and why. It\'s the better fit for SEOs who want to stay in the driver\'s seat.\n\nChoose Linki if you value full control and a focused internal linking workflow. Choose SEOJuice if you want broad, automated SEO across multiple dimensions with minimal hands-on involvement.',
+      'SEOJuice is a good fit for site owners who want a wide-ranging SEO automation layer running quietly in the background. The white-label capability and snippet-based model makes it appealing for agencies who want to deliver hands-off SEO services — though it does require installing code on each client site.\n\nLinki takes a different approach: it analyses any website from the outside and gives you focused internal link suggestions that you review and implement yourself. No snippet to install, no CMS access needed. For agencies, that means you can audit linking opportunities across your entire client portfolio without needing backend access to each site — useful for pitching new clients or running quick audits alongside your existing workflow.\n\nChoose Linki if you want full control, no-access-required analysis, and a focused internal linking workflow. Choose SEOJuice if you want broad, automated SEO with white-label reporting and don\'t mind the snippet requirement.',
   },
 ]
 

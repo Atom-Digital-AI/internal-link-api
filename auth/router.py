@@ -3,6 +3,8 @@ import hashlib
 import logging
 import os
 import secrets
+
+import sentry_sdk
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -15,9 +17,11 @@ from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token as google_id_token
 
 from auth.disposable_email import is_disposable_email
+from auth.turnstile import verify_turnstile
 
 from rate_limit import limiter
 from auth.dependencies import get_current_user as get_current_user_dep
+from auth.dependencies import get_current_user_allow_unverified
 from auth.utils import (
     create_access_token,
     create_refresh_token,
@@ -47,12 +51,14 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     password: str
     confirm_password: str
+    turnstile_token: str
 
 
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
     remember_me: bool = False
+    turnstile_token: str
 
 
 class GoogleAuthRequest(BaseModel):
@@ -71,6 +77,7 @@ class UserMeResponse(BaseModel):
     created_at: datetime
     has_google: bool = False
     has_password: bool = True
+    email_verified: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -108,6 +115,14 @@ async def register(
     response: Response,
     db: AsyncSession = Depends(get_db),
 ) -> TokenResponse:
+    # Verify Turnstile token
+    client_ip = request.client.host if request.client else None
+    if not await verify_turnstile(request_body.turnstile_token, client_ip):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Bot verification failed. Please try again.",
+        )
+
     if request_body.password != request_body.confirm_password:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Passwords do not match."
@@ -131,13 +146,29 @@ async def register(
             detail="An account with this email already exists.",
         )
 
+    # Generate email verification token
+    raw_token = secrets.token_hex(32)
+    hashed_token = hashlib.sha256(raw_token.encode()).hexdigest()
+    expiry = datetime.now(timezone.utc) + timedelta(hours=24)
+
     user = User(
         email=request_body.email,
         password_hash=hash_password(request_body.password),
+        email_verified=False,
+        verification_token=hashed_token,
+        verification_token_expires=expiry,
     )
     db.add(user)
     await db.flush()
     await db.refresh(user)
+
+    # Send verification email (failures must not break registration)
+    try:
+        from email_service import send_verification_email
+
+        send_verification_email(user.email, raw_token)
+    except Exception:
+        logger.exception("Failed to send verification email to %s", user.email)
 
     user_id = str(user.id)
     access_token = create_access_token(user_id)
@@ -161,6 +192,14 @@ async def login(
     db: AsyncSession = Depends(get_db),
 ) -> TokenResponse:
     _INVALID_MSG = "Invalid email or password."
+
+    # Verify Turnstile token
+    client_ip = request.client.host if request.client else None
+    if not await verify_turnstile(request_body.turnstile_token, client_ip):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Bot verification failed. Please try again.",
+        )
 
     result = await db.execute(select(User).where(User.email == request_body.email))
     user = result.scalar_one_or_none()
@@ -209,8 +248,9 @@ async def google_auth(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid Google token.",
         )
-    except Exception:
+    except Exception as e:
         logger.exception("Google token verification failed")
+        sentry_sdk.capture_exception(e)
         raise
 
     google_id = idinfo["sub"]
@@ -234,6 +274,9 @@ async def google_auth(
         if user is not None:
             # Link Google account to existing email user
             user.google_id = google_id
+            user.email_verified = True
+            user.verification_token = None
+            user.verification_token_expires = None
             await db.flush()
         else:
             # 3. Create new user (Google-only, no password)
@@ -242,7 +285,7 @@ async def google_auth(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Registration with disposable email addresses is not allowed.",
                 )
-            user = User(email=email, google_id=google_id)
+            user = User(email=email, google_id=google_id, email_verified=True)
             db.add(user)
             await db.flush()
             await db.refresh(user)
@@ -263,7 +306,7 @@ async def google_auth(
 @router.post("/google/link", status_code=status.HTTP_200_OK)
 async def link_google(
     request_body: GoogleAuthRequest,
-    current_user: User = Depends(get_current_user_dep),
+    current_user: User = Depends(get_current_user_allow_unverified),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Link a Google account to the current authenticated user."""
@@ -303,6 +346,9 @@ async def link_google(
         )
 
     current_user.google_id = google_id
+    current_user.email_verified = True
+    current_user.verification_token = None
+    current_user.verification_token_expires = None
     await db.flush()
 
     return {"message": "Google account linked successfully."}
@@ -394,8 +440,8 @@ async def forgot_password(
             from email_service import send_password_reset_email
 
             send_password_reset_email(user.email, raw_token)
-        except Exception:
-            pass  # Email failures must not break the flow
+        except Exception as e:
+            sentry_sdk.capture_exception(e)
 
     return {"message": "If that email exists, a reset link has been sent."}
 
@@ -447,13 +493,87 @@ async def reset_password(
 
 
 # ---------------------------------------------------------------------------
+# POST /auth/verify-email
+# ---------------------------------------------------------------------------
+
+
+class VerifyEmailRequest(BaseModel):
+    token: str
+
+
+@router.post("/verify-email", status_code=status.HTTP_200_OK)
+async def verify_email(
+    request_body: VerifyEmailRequest,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Verify a user's email address using the token sent via email."""
+    hashed_token = hashlib.sha256(request_body.token.encode()).hexdigest()
+    now = datetime.now(timezone.utc)
+
+    result = await db.execute(
+        select(User).where(User.verification_token == hashed_token)
+    )
+    user = result.scalar_one_or_none()
+
+    if user is None or user.verification_token_expires is None or user.verification_token_expires < now:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Verification link is invalid or has expired.",
+        )
+
+    user.email_verified = True
+    user.verification_token = None
+    user.verification_token_expires = None
+    await db.flush()
+
+    return {"message": "Email verified successfully."}
+
+
+# ---------------------------------------------------------------------------
+# POST /auth/resend-verification
+# ---------------------------------------------------------------------------
+
+
+@limiter.limit("3/minute")
+@router.post("/resend-verification", status_code=status.HTTP_200_OK)
+async def resend_verification(
+    request: Request,
+    current_user: User = Depends(get_current_user_allow_unverified),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Resend the email verification link to the current user."""
+    if current_user.email_verified:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email is already verified.",
+        )
+
+    raw_token = secrets.token_hex(32)
+    hashed_token = hashlib.sha256(raw_token.encode()).hexdigest()
+    expiry = datetime.now(timezone.utc) + timedelta(hours=24)
+
+    current_user.verification_token = hashed_token
+    current_user.verification_token_expires = expiry
+    await db.flush()
+
+    try:
+        from email_service import send_verification_email
+
+        send_verification_email(current_user.email, raw_token)
+    except Exception:
+        logger.exception("Failed to resend verification email to %s", current_user.email)
+
+    return {"message": "Verification email sent."}
+
+
+# ---------------------------------------------------------------------------
 # GET /user/me
 # ---------------------------------------------------------------------------
 
 
 @user_router.get("/me", response_model=UserMeResponse)
 async def get_me(
-    current_user: User = Depends(get_current_user_dep),
+    current_user: User = Depends(get_current_user_allow_unverified),
 ) -> UserMeResponse:
     """Get current authenticated user profile (requires Bearer token)."""
     return UserMeResponse(
@@ -463,6 +583,7 @@ async def get_me(
         created_at=current_user.created_at,
         has_google=current_user.google_id is not None,
         has_password=current_user.password_hash is not None,
+        email_verified=current_user.email_verified,
     )
 
 
@@ -480,7 +601,7 @@ class SubscriptionResponse(BaseModel):
 
 @user_router.get("/me/subscription", response_model=SubscriptionResponse)
 async def get_my_subscription(
-    current_user: User = Depends(get_current_user_dep),
+    current_user: User = Depends(get_current_user_allow_unverified),
     db: AsyncSession = Depends(get_db),
 ) -> SubscriptionResponse:
     """Get the current user's subscription details."""
@@ -513,7 +634,7 @@ class UsageResponse(BaseModel):
 
 @user_router.get("/me/usage", response_model=UsageResponse)
 async def get_my_usage(
-    current_user: User = Depends(get_current_user_dep),
+    current_user: User = Depends(get_current_user_allow_unverified),
     db: AsyncSession = Depends(get_db),
 ) -> UsageResponse:
     """Get the current user's AI usage for the current billing period."""
@@ -546,7 +667,7 @@ class UpdateEmailRequest(BaseModel):
 @user_router.patch("/me", response_model=UserMeResponse)
 async def update_email(
     request_body: UpdateEmailRequest,
-    current_user: User = Depends(get_current_user_dep),
+    current_user: User = Depends(get_current_user_allow_unverified),
     db: AsyncSession = Depends(get_db),
 ) -> UserMeResponse:
     """Update the authenticated user's email address.
@@ -583,8 +704,24 @@ async def update_email(
         )
 
     current_user.email = new_email
+
+    # Require re-verification for the new email address
+    raw_token = secrets.token_hex(32)
+    hashed_token = hashlib.sha256(raw_token.encode()).hexdigest()
+    expiry = datetime.now(timezone.utc) + timedelta(hours=24)
+
+    current_user.email_verified = False
+    current_user.verification_token = hashed_token
+    current_user.verification_token_expires = expiry
     await db.flush()
     await db.refresh(current_user)
+
+    try:
+        from email_service import send_verification_email
+
+        send_verification_email(current_user.email, raw_token)
+    except Exception:
+        logger.exception("Failed to send verification email to %s", current_user.email)
 
     return UserMeResponse(
         id=str(current_user.id),
@@ -593,6 +730,7 @@ async def update_email(
         created_at=current_user.created_at,
         has_google=current_user.google_id is not None,
         has_password=current_user.password_hash is not None,
+        email_verified=current_user.email_verified,
     )
 
 
@@ -610,7 +748,7 @@ class ChangePasswordRequest(BaseModel):
 @user_router.post("/change-password", status_code=status.HTTP_200_OK)
 async def change_password(
     request_body: ChangePasswordRequest,
-    current_user: User = Depends(get_current_user_dep),
+    current_user: User = Depends(get_current_user_allow_unverified),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Change the authenticated user's password.

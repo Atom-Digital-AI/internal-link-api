@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { GoogleLogin } from '@react-oauth/google'
+import { Turnstile, type TurnstileInstance } from '@marsidev/react-turnstile'
 import { useAuth } from '../contexts/AuthContext'
 import linkiLogo from '../../media/images/logos/Linki Logo - No Spacing - Transparent.png';
 
@@ -21,6 +22,8 @@ export default function Register() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
+  const turnstileRef = useRef<TurnstileInstance | null>(null)
 
   const strength = getPasswordStrength(password)
   const passwordMismatch = confirmPassword.length > 0 && password !== confirmPassword
@@ -31,13 +34,19 @@ export default function Register() {
       setError('Passwords do not match.')
       return
     }
+    if (!turnstileToken) {
+      setError('Please complete the verification.')
+      return
+    }
     setError(null)
     setLoading(true)
     try {
-      await register(email, password, confirmPassword)
+      await register(email, password, confirmPassword, turnstileToken)
       navigate('/app')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed.')
+      turnstileRef.current?.reset()
+      setTurnstileToken(null)
     } finally {
       setLoading(false)
     }
@@ -196,15 +205,24 @@ export default function Register() {
               )}
             </div>
 
+            <Turnstile
+              ref={turnstileRef}
+              siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY || ''}
+              onSuccess={setTurnstileToken}
+              onError={() => setTurnstileToken(null)}
+              onExpire={() => setTurnstileToken(null)}
+              options={{ theme: 'light', size: 'flexible' }}
+            />
+
             <button
               type="submit"
-              disabled={loading || passwordMismatch}
+              disabled={loading || passwordMismatch || !turnstileToken}
               style={{
                 width: '100%', padding: '13px',
-                background: loading || passwordMismatch ? '#AEAEB2' : '#0071E3',
+                background: loading || passwordMismatch || !turnstileToken ? '#AEAEB2' : '#0071E3',
                 color: '#fff', border: 'none', borderRadius: '980px',
                 fontSize: '1rem', fontWeight: 600,
-                cursor: loading || passwordMismatch ? 'not-allowed' : 'pointer',
+                cursor: loading || passwordMismatch || !turnstileToken ? 'not-allowed' : 'pointer',
                 marginTop: '8px', transition: 'background 150ms',
               }}
             >

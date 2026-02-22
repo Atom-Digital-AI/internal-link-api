@@ -1,9 +1,19 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import { Helmet } from 'react-helmet-async'
 import { useAuth } from '../contexts/AuthContext'
+import { getGlobal } from '../services/cms'
 import MarketingNav from '../components/MarketingNav'
 import MarketingFooter from '../components/MarketingFooter'
 import { createCheckoutSession, upgradeToPro } from '../services/api'
+
+interface PricingData {
+  heroHeading: string
+  heroSubtext: string
+  faqItems: { q: string; a: string }[]
+  metaTitle: string
+  metaDescription: string
+}
 
 const comparisonRows: { label: string; free: string | null; starter: string | null; pro: string }[] = [
   { label: 'URLs per scan',        free: '10',     starter: '50',          pro: '500'        },
@@ -19,6 +29,24 @@ export default function Pricing() {
   const navigate = useNavigate()
   const [loading, setLoading] = useState<string | null>(null) // tracks which action is loading
   const [error, setError] = useState<string | null>(null)
+  const [cmsContent, setCmsContent] = useState<PricingData | null>(null)
+
+  useEffect(() => {
+    getGlobal<PricingData>('page-pricing').then(setCmsContent).catch(() => {})
+  }, [])
+
+  const faqPageSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: (cmsContent?.faqItems ?? []).map(({ q, a }) => ({
+      '@type': 'Question',
+      name: q,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: a,
+      },
+    })),
+  }
 
   const isPro = user?.plan === 'pro'
   const isStarter = user?.plan === 'starter'
@@ -99,6 +127,20 @@ export default function Pricing() {
 
   return (
     <>
+      <Helmet>
+        <title>{cmsContent?.metaTitle ?? 'Pricing - Linki | Free, Starter & Pro Plans'}</title>
+        <meta name="description" content={cmsContent?.metaDescription ?? 'Choose the right Linki plan: Free for basic link analysis, Starter for AI suggestions, or Pro for 500 URLs, unlimited sessions, and priority support.'} />
+        <link rel="canonical" href="https://getlinki.app/pricing" />
+        <meta property="og:title" content={cmsContent?.metaTitle ?? 'Pricing - Linki | Free, Starter & Pro Plans'} />
+        <meta property="og:description" content={cmsContent?.metaDescription ?? 'Choose the right Linki plan: Free for basic link analysis, Starter for AI suggestions, or Pro for 500 URLs, unlimited sessions, and priority support.'} />
+        <meta property="og:url" content="https://getlinki.app/pricing" />
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="Linki" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={cmsContent?.metaTitle ?? 'Pricing - Linki | Free, Starter & Pro Plans'} />
+        <meta name="twitter:description" content={cmsContent?.metaDescription ?? 'Choose the right Linki plan: Free for basic link analysis, Starter for AI suggestions, or Pro for 500 URLs, unlimited sessions, and priority support.'} />
+        <script type="application/ld+json">{JSON.stringify(faqPageSchema)}</script>
+      </Helmet>
       <MarketingNav />
       <div style={{
         minHeight: '100vh',
@@ -113,10 +155,10 @@ export default function Pricing() {
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: 'var(--sp-12)' }}>
           <h1 style={{ color: '#1D1D1F', fontSize: 'var(--text-3xl)', fontWeight: 700, margin: '0 0 var(--sp-3)' }}>
-            Simple, transparent pricing
+            {cmsContent?.heroHeading ?? 'Simple, transparent pricing'}
           </h1>
           <p style={{ color: '#6E6E73', fontSize: 'var(--text-base)', margin: 0 }}>
-            Start free. Upgrade when you're ready. Cancel any time.
+            {cmsContent?.heroSubtext ?? "Start free. Upgrade when you're ready. Cancel any time."}
           </p>
         </div>
 
@@ -474,28 +516,7 @@ export default function Pricing() {
             Frequently asked questions
           </h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)' }}>
-            {[
-              {
-                q: 'Can I cancel my subscription at any time?',
-                a: 'Yes. Cancel from your account settings and your subscription ends at the next billing date. You keep access until then.',
-              },
-              {
-                q: 'How do I upgrade from Starter to Pro?',
-                a: 'Click "Upgrade to Pro" on the pricing page or in your account. Stripe calculates unused Starter credit and charges only the difference — you get Pro access instantly.',
-              },
-              {
-                q: 'What counts as an AI suggestion?',
-                a: 'Each time Linki generates a link recommendation for a page using Google Gemini, that counts as one suggestion. Starter plans include 30 per month; Pro plans include 200.',
-              },
-              {
-                q: 'What happens to my saved sessions if I downgrade?',
-                a: 'Your sessions are kept on our servers for 30 days after downgrading in case you re-subscribe. After that they are permanently deleted.',
-              },
-              {
-                q: 'Do you offer refunds?',
-                a: 'We don\'t offer partial-month refunds, but if something goes wrong please email hello@linki.app and we\'ll do our best to help.',
-              },
-            ].map(({ q, a }) => (
+            {(cmsContent?.faqItems ?? []).map(({ q, a }) => (
               <div key={q} style={{
                 background: '#FFFFFF',
                 borderRadius: 'var(--radius-xl)',

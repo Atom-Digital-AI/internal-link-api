@@ -15,9 +15,9 @@ interface AuthContextValue {
   user: User | null
   accessToken: string | null
   isLoading: boolean
-  login: (email: string, password: string, rememberMe?: boolean) => Promise<void>
+  login: (email: string, password: string, rememberMe?: boolean, turnstileToken?: string) => Promise<void>
   logout: () => Promise<void>
-  register: (email: string, password: string, confirmPassword: string) => Promise<void>
+  register: (email: string, password: string, confirmPassword: string, turnstileToken?: string) => Promise<void>
   googleLogin: (credential: string) => Promise<void>
   setAccessToken: (token: string | null) => void
   refreshUser: () => Promise<void>
@@ -67,12 +67,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [fetchMe])
 
   const login = useCallback(
-    async (email: string, password: string, rememberMe = false) => {
+    async (email: string, password: string, rememberMe = false, turnstileToken?: string) => {
       const res = await fetch(`${API_BASE}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ email, password, remember_me: rememberMe }),
+        body: JSON.stringify({ email, password, remember_me: rememberMe, turnstile_token: turnstileToken }),
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({ detail: 'Login failed.' }))
@@ -123,12 +123,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const register = useCallback(
-    async (email: string, password: string, confirmPassword: string) => {
+    async (email: string, password: string, confirmPassword: string, turnstileToken?: string) => {
       const res = await fetch(`${API_BASE}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ email, password, confirm_password: confirmPassword }),
+        body: JSON.stringify({ email, password, confirm_password: confirmPassword, turnstile_token: turnstileToken }),
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({ detail: 'Registration failed.' }))
