@@ -27,6 +27,15 @@ async def _resolve_user(
         )
 
     payload = decode_token(credentials.credentials)
+
+    # Ensure only access tokens are accepted (not refresh tokens)
+    if payload.get("type") != "access":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token type.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     user_id = payload.get("sub")
     if not user_id:
         raise HTTPException(

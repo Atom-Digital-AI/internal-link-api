@@ -8,6 +8,14 @@ from models import LinkInfo, InternalLinksInfo, AnalyzeResponse, PageResult, Tar
 USER_AGENT = "InternalLinkFinder/1.0 (SEO Analysis Tool)"
 PAGE_TIMEOUT = 10.0
 
+STOP_WORDS = frozenset({
+    'this', 'that', 'with', 'from', 'your', 'have', 'will', 'what', 'when',
+    'where', 'which', 'their', 'there', 'about', 'would', 'could', 'should',
+    'been', 'being', 'more', 'most', 'some', 'than', 'then', 'them', 'these',
+    'those', 'into', 'over', 'such', 'only', 'other', 'also', 'just', 'very',
+    'even', 'much', 'each', 'well', 'back', 'after', 'before',
+})
+
 
 def get_word_stems(text: str) -> set[str]:
     """
@@ -137,16 +145,13 @@ async def fetch_target_page_content(url: str) -> TargetPageInfo:
     # Add title words (high priority)
     if title:
         title_words = re.findall(r'\b[a-zA-Z]{4,}\b', title.lower())
-        # Filter out common stop words
-        stop_words = {'this', 'that', 'with', 'from', 'your', 'have', 'will', 'what', 'when', 'where', 'which', 'their', 'there', 'about', 'would', 'could', 'should', 'been', 'being', 'more', 'most', 'some', 'than', 'then', 'them', 'these', 'those', 'into', 'over', 'such', 'only', 'other', 'also', 'just', 'very', 'even', 'much', 'each', 'well', 'back', 'after', 'before'}
-        keywords.extend([w for w in title_words if w not in stop_words])
+        keywords.extend([w for w in title_words if w not in STOP_WORDS])
 
     # Add H1/H2 words from content (medium priority)
     for tag in soup.find_all(['h1', 'h2'], limit=5):
         heading_text = tag.get_text(strip=True)
         heading_words = re.findall(r'\b[a-zA-Z]{4,}\b', heading_text.lower())
-        stop_words = {'this', 'that', 'with', 'from', 'your', 'have', 'will', 'what', 'when', 'where', 'which', 'their', 'there', 'about', 'would', 'could', 'should', 'been', 'being', 'more', 'most', 'some', 'than', 'then', 'them', 'these', 'those', 'into', 'over', 'such', 'only', 'other', 'also', 'just', 'very', 'even', 'much', 'each', 'well', 'back', 'after', 'before'}
-        keywords.extend([w for w in heading_words if w not in stop_words])
+        keywords.extend([w for w in heading_words if w not in STOP_WORDS])
 
     # Deduplicate while preserving order (title words first)
     seen = set()

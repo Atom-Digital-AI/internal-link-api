@@ -173,7 +173,7 @@ async def cancel_subscription(
         sentry_sdk.capture_exception(e)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Failed to cancel subscription: {str(e)}",
+            detail="Failed to cancel subscription. Please try again or contact support.",
         )
 
     subscription.status = "pending_cancellation"
@@ -236,7 +236,7 @@ async def upgrade_to_pro(
         sentry_sdk.capture_exception(e)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Failed to upgrade subscription: {str(e)}",
+            detail="Failed to upgrade subscription. Please try again or contact support.",
         )
 
     current_user.plan = "pro"
@@ -407,7 +407,7 @@ async def _handle_subscription_deleted(data: dict, db: AsyncSession) -> None:
     access_until_str = "now"
     if current_period_end:
         access_until_str = current_period_end.strftime("%B %d, %Y")
-        if current_period_end < now:
+        if current_period_end <= now:
             if user:
                 user.plan = "free"
                 user.downgraded_at = datetime.now(timezone.utc)

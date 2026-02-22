@@ -1,6 +1,6 @@
 """Analysis sessions CRUD router (Pro users only)."""
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -200,7 +200,7 @@ async def update_session(
     if request_body.is_saved is not None:
         session.is_saved = request_body.is_saved
 
-    session.updated_at = datetime.utcnow()
+    session.updated_at = datetime.now(timezone.utc)
     await db.flush()
     await db.refresh(session)
     return _session_to_detail(session)
